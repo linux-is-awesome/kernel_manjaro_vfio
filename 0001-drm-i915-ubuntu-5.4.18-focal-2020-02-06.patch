@@ -1,0 +1,601 @@
+diff -Npur linux/drivers/gpu/drm/i915/display/intel_audio.c focal/drivers/gpu/drm/i915/display/intel_audio.c
+--- linux/drivers/gpu/drm/i915/display/intel_audio.c	2020-02-06 20:50:57.788801422 +0100
++++ focal/drivers/gpu/drm/i915/display/intel_audio.c	2020-02-06 20:35:38.952765622 +0100
+@@ -851,10 +851,16 @@ static unsigned long i915_audio_componen
+ 	ret = intel_display_power_get(dev_priv, POWER_DOMAIN_AUDIO);
+ 
+ 	/* Force CDCLK to 2*BCLK as long as we need audio to be powered. */
+-	if (dev_priv->audio_power_refcount++ == 0)
+-		if (IS_CANNONLAKE(dev_priv) || IS_GEMINILAKE(dev_priv))
++	if (dev_priv->audio_power_refcount++ == 0) {
++		if (INTEL_GEN(dev_priv) >= 10 || IS_GEMINILAKE(dev_priv))
+ 			glk_force_audio_cdclk(dev_priv, true);
+ 
++		if (INTEL_GEN(dev_priv) >= 10 || IS_GEMINILAKE(dev_priv))
++			I915_WRITE(AUD_PIN_BUF_CTL,
++				   (I915_READ(AUD_PIN_BUF_CTL) |
++				    AUD_PIN_BUF_ENABLE));
++	}
++
+ 	return ret;
+ }
+ 
+@@ -865,7 +871,7 @@ static void i915_audio_component_put_pow
+ 
+ 	/* Stop forcing CDCLK to 2*BCLK if no need for audio to be powered. */
+ 	if (--dev_priv->audio_power_refcount == 0)
+-		if (IS_CANNONLAKE(dev_priv) || IS_GEMINILAKE(dev_priv))
++		if (INTEL_GEN(dev_priv) >= 10 || IS_GEMINILAKE(dev_priv))
+ 			glk_force_audio_cdclk(dev_priv, false);
+ 
+ 	intel_display_power_put(dev_priv, POWER_DOMAIN_AUDIO, cookie);
+diff -Npur linux/drivers/gpu/drm/i915/display/intel_bios.c focal/drivers/gpu/drm/i915/display/intel_bios.c
+--- linux/drivers/gpu/drm/i915/display/intel_bios.c	2020-02-06 20:50:57.788801422 +0100
++++ focal/drivers/gpu/drm/i915/display/intel_bios.c	2020-02-06 20:35:38.952765622 +0100
+@@ -32,6 +32,7 @@
+ #include "display/intel_gmbus.h"
+ 
+ #include "i915_drv.h"
++#include <linux/dmi.h>
+ 
+ #define _INTEL_BIOS_PRIVATE
+ #include "intel_vbt_defs.h"
+@@ -1828,6 +1829,22 @@ static const struct vbt_header *find_vbt
+ 	return NULL;
+ }
+ 
++#define DRM_DMI_PRODUCT_VERSION 0x6
++
++static void parse_product_info(struct drm_i915_private *dev_priv)
++{
++	const char *product_ver = dmi_get_system_info(DRM_DMI_PRODUCT_VERSION);
++	if (!product_ver)
++		return;
++
++	if (!strncmp(product_ver, "ThinkPad X1", 11)) {
++		DRM_DEBUG_KMS("dmi: %s, Bypassing TMDS_OE write\n", product_ver);
++		dev_priv->bypass_tmds_oe = true;
++	}
++
++	return;
++}
++
+ /**
+  * intel_bios_init - find VBT and initialize settings from the BIOS
+  * @dev_priv: i915 device instance
+@@ -1886,6 +1903,8 @@ void intel_bios_init(struct drm_i915_pri
+ 	parse_sdvo_device_mapping(dev_priv, bdb->version);
+ 	parse_ddi_ports(dev_priv, bdb->version);
+ 
++	parse_product_info(dev_priv);
++
+ out:
+ 	if (!vbt) {
+ 		DRM_INFO("Failed to find VBIOS tables (VBT)\n");
+diff -Npur linux/drivers/gpu/drm/i915/display/intel_display_types.h focal/drivers/gpu/drm/i915/display/intel_display_types.h
+--- linux/drivers/gpu/drm/i915/display/intel_display_types.h	2020-02-06 20:50:57.792134766 +0100
++++ focal/drivers/gpu/drm/i915/display/intel_display_types.h	2020-02-06 20:35:38.956098965 +0100
+@@ -214,6 +214,9 @@ struct intel_panel {
+ 		u8 controller;		/* bxt+ only */
+ 		struct pwm_device *pwm;
+ 
++		/* DPCD backlight */
++		u8 pwmgen_bit_count;
++
+ 		struct backlight_device *device;
+ 
+ 		/* Connector and platform specific backlight functions */
+diff -Npur linux/drivers/gpu/drm/i915/display/intel_dp.c focal/drivers/gpu/drm/i915/display/intel_dp.c
+--- linux/drivers/gpu/drm/i915/display/intel_dp.c	2020-02-06 20:50:57.792134766 +0100
++++ focal/drivers/gpu/drm/i915/display/intel_dp.c	2020-02-06 20:35:38.956098965 +0100
+@@ -7218,11 +7218,8 @@ intel_dp_init_connector(struct intel_dig
+ 		intel_connector->get_hw_state = intel_connector_get_hw_state;
+ 
+ 	/* init MST on ports that can support it */
+-	if (HAS_DP_MST(dev_priv) && !intel_dp_is_edp(intel_dp) &&
+-	    (port == PORT_B || port == PORT_C ||
+-	     port == PORT_D || port == PORT_F))
+-		intel_dp_mst_encoder_init(intel_dig_port,
+-					  intel_connector->base.base.id);
++	intel_dp_mst_encoder_init(intel_dig_port,
++				  intel_connector->base.base.id);
+ 
+ 	if (!intel_edp_init_connector(intel_dp, intel_connector)) {
+ 		intel_dp_aux_fini(intel_dp);
+diff -Npur linux/drivers/gpu/drm/i915/display/intel_dp_aux_backlight.c focal/drivers/gpu/drm/i915/display/intel_dp_aux_backlight.c
+--- linux/drivers/gpu/drm/i915/display/intel_dp_aux_backlight.c	2020-02-06 20:50:57.792134766 +0100
++++ focal/drivers/gpu/drm/i915/display/intel_dp_aux_backlight.c	2020-02-06 20:35:38.956098965 +0100
+@@ -59,8 +59,23 @@ static u32 intel_dp_aux_get_backlight(st
+ {
+ 	struct intel_dp *intel_dp = enc_to_intel_dp(&connector->encoder->base);
+ 	u8 read_val[2] = { 0x0 };
++	u8 control_reg;
+ 	u16 level = 0;
+ 
++	if (drm_dp_dpcd_readb(&intel_dp->aux, DP_EDP_DISPLAY_CONTROL_REGISTER,
++			      &control_reg) != 1) {
++		DRM_DEBUG_KMS("Failed to read the DPCD register 0x%x\n",
++			      DP_EDP_DISPLAY_CONTROL_REGISTER);
++		return 0;
++	}
++
++	/*
++	 * If we're not in DPCD control mode yet, the programmed brightness
++	 * value is meaningless and we should assume max brightness
++	 */
++	if (!(control_reg & DP_EDP_BACKLIGHT_CONTROL_MODE_DPCD))
++		return connector->panel.backlight.max;
++
+ 	if (drm_dp_dpcd_read(&intel_dp->aux, DP_EDP_BACKLIGHT_BRIGHTNESS_MSB,
+ 			     &read_val, sizeof(read_val)) < 0) {
+ 		DRM_DEBUG_KMS("Failed to read DPCD register 0x%x\n",
+@@ -111,61 +126,28 @@ static bool intel_dp_aux_set_pwm_freq(st
+ {
+ 	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
+ 	struct intel_dp *intel_dp = enc_to_intel_dp(&connector->encoder->base);
+-	int freq, fxp, fxp_min, fxp_max, fxp_actual, f = 1;
+-	u8 pn, pn_min, pn_max;
++	const u8 pn = connector->panel.backlight.pwmgen_bit_count;
++	int freq, fxp, f, fxp_actual, fxp_min, fxp_max;
+ 
+-	/* Find desired value of (F x P)
+-	 * Note that, if F x P is out of supported range, the maximum value or
+-	 * minimum value will applied automatically. So no need to check that.
+-	 */
+ 	freq = dev_priv->vbt.backlight.pwm_freq_hz;
+-	DRM_DEBUG_KMS("VBT defined backlight frequency %u Hz\n", freq);
+ 	if (!freq) {
+ 		DRM_DEBUG_KMS("Use panel default backlight frequency\n");
+ 		return false;
+ 	}
+ 
+ 	fxp = DIV_ROUND_CLOSEST(KHz(DP_EDP_BACKLIGHT_FREQ_BASE_KHZ), freq);
++	f = clamp(DIV_ROUND_CLOSEST(fxp, 1 << pn), 1, 255);
++	fxp_actual = f << pn;
+ 
+-	/* Use highest possible value of Pn for more granularity of brightness
+-	 * adjustment while satifying the conditions below.
+-	 * - Pn is in the range of Pn_min and Pn_max
+-	 * - F is in the range of 1 and 255
+-	 * - FxP is within 25% of desired value.
+-	 *   Note: 25% is arbitrary value and may need some tweak.
+-	 */
+-	if (drm_dp_dpcd_readb(&intel_dp->aux,
+-			       DP_EDP_PWMGEN_BIT_COUNT_CAP_MIN, &pn_min) != 1) {
+-		DRM_DEBUG_KMS("Failed to read pwmgen bit count cap min\n");
+-		return false;
+-	}
+-	if (drm_dp_dpcd_readb(&intel_dp->aux,
+-			       DP_EDP_PWMGEN_BIT_COUNT_CAP_MAX, &pn_max) != 1) {
+-		DRM_DEBUG_KMS("Failed to read pwmgen bit count cap max\n");
+-		return false;
+-	}
+-	pn_min &= DP_EDP_PWMGEN_BIT_COUNT_MASK;
+-	pn_max &= DP_EDP_PWMGEN_BIT_COUNT_MASK;
+-
++	/* Ensure frequency is within 25% of desired value */
+ 	fxp_min = DIV_ROUND_CLOSEST(fxp * 3, 4);
+ 	fxp_max = DIV_ROUND_CLOSEST(fxp * 5, 4);
+-	if (fxp_min < (1 << pn_min) || (255 << pn_max) < fxp_max) {
+-		DRM_DEBUG_KMS("VBT defined backlight frequency out of range\n");
+-		return false;
+-	}
+-
+-	for (pn = pn_max; pn >= pn_min; pn--) {
+-		f = clamp(DIV_ROUND_CLOSEST(fxp, 1 << pn), 1, 255);
+-		fxp_actual = f << pn;
+-		if (fxp_min <= fxp_actual && fxp_actual <= fxp_max)
+-			break;
+-	}
+ 
+-	if (drm_dp_dpcd_writeb(&intel_dp->aux,
+-			       DP_EDP_PWMGEN_BIT_COUNT, pn) < 0) {
+-		DRM_DEBUG_KMS("Failed to write aux pwmgen bit count\n");
++	if (fxp_min > fxp_actual || fxp_actual > fxp_max) {
++		DRM_DEBUG_KMS("Actual frequency out of range\n");
+ 		return false;
+ 	}
++
+ 	if (drm_dp_dpcd_writeb(&intel_dp->aux,
+ 			       DP_EDP_BACKLIGHT_FREQ_SET, (u8) f) < 0) {
+ 		DRM_DEBUG_KMS("Failed to write aux backlight freq\n");
+@@ -178,6 +160,7 @@ static void intel_dp_aux_enable_backligh
+ 					  const struct drm_connector_state *conn_state)
+ {
+ 	struct intel_connector *connector = to_intel_connector(conn_state->connector);
++	struct intel_panel *panel = &connector->panel;
+ 	struct intel_dp *intel_dp = enc_to_intel_dp(&connector->encoder->base);
+ 	u8 dpcd_buf, new_dpcd_buf, edp_backlight_mode;
+ 
+@@ -197,6 +180,12 @@ static void intel_dp_aux_enable_backligh
+ 	case DP_EDP_BACKLIGHT_CONTROL_MODE_PRODUCT:
+ 		new_dpcd_buf &= ~DP_EDP_BACKLIGHT_CONTROL_MODE_MASK;
+ 		new_dpcd_buf |= DP_EDP_BACKLIGHT_CONTROL_MODE_DPCD;
++
++		if (drm_dp_dpcd_writeb(&intel_dp->aux,
++				       DP_EDP_PWMGEN_BIT_COUNT,
++				       panel->backlight.pwmgen_bit_count) < 0)
++			DRM_DEBUG_KMS("Failed to write aux pwmgen bit count\n");
++
+ 		break;
+ 
+ 	/* Do nothing when it is already DPCD mode */
+@@ -216,8 +205,9 @@ static void intel_dp_aux_enable_backligh
+ 		}
+ 	}
+ 
++	intel_dp_aux_set_backlight(conn_state,
++				   connector->panel.backlight.level);
+ 	set_aux_backlight_enable(intel_dp, true);
+-	intel_dp_aux_set_backlight(conn_state, connector->panel.backlight.level);
+ }
+ 
+ static void intel_dp_aux_disable_backlight(const struct drm_connector_state *old_conn_state)
+@@ -225,20 +215,91 @@ static void intel_dp_aux_disable_backlig
+ 	set_aux_backlight_enable(enc_to_intel_dp(old_conn_state->best_encoder), false);
+ }
+ 
++static u32 intel_dp_aux_calc_max_backlight(struct intel_connector *connector)
++{
++	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
++	struct intel_dp *intel_dp = enc_to_intel_dp(&connector->encoder->base);
++	struct intel_panel *panel = &connector->panel;
++	u32 max_backlight = 0;
++	int freq, fxp, fxp_min, fxp_max, fxp_actual, f = 1;
++	u8 pn, pn_min, pn_max;
++
++	if (drm_dp_dpcd_readb(&intel_dp->aux, DP_EDP_PWMGEN_BIT_COUNT, &pn)) {
++		pn &= DP_EDP_PWMGEN_BIT_COUNT_MASK;
++		max_backlight = (1 << pn) - 1;
++	}
++
++	/* Find desired value of (F x P)
++	 * Note that, if F x P is out of supported range, the maximum value or
++	 * minimum value will applied automatically. So no need to check that.
++	 */
++	freq = dev_priv->vbt.backlight.pwm_freq_hz;
++	DRM_DEBUG_KMS("VBT defined backlight frequency %u Hz\n", freq);
++	if (!freq) {
++		DRM_DEBUG_KMS("Use panel default backlight frequency\n");
++		return max_backlight;
++	}
++
++	fxp = DIV_ROUND_CLOSEST(KHz(DP_EDP_BACKLIGHT_FREQ_BASE_KHZ), freq);
++
++	/* Use highest possible value of Pn for more granularity of brightness
++	 * adjustment while satifying the conditions below.
++	 * - Pn is in the range of Pn_min and Pn_max
++	 * - F is in the range of 1 and 255
++	 * - FxP is within 25% of desired value.
++	 *   Note: 25% is arbitrary value and may need some tweak.
++	 */
++	if (drm_dp_dpcd_readb(&intel_dp->aux,
++			      DP_EDP_PWMGEN_BIT_COUNT_CAP_MIN, &pn_min) != 1) {
++		DRM_DEBUG_KMS("Failed to read pwmgen bit count cap min\n");
++		return max_backlight;
++	}
++	if (drm_dp_dpcd_readb(&intel_dp->aux,
++			      DP_EDP_PWMGEN_BIT_COUNT_CAP_MAX, &pn_max) != 1) {
++		DRM_DEBUG_KMS("Failed to read pwmgen bit count cap max\n");
++		return max_backlight;
++	}
++	pn_min &= DP_EDP_PWMGEN_BIT_COUNT_MASK;
++	pn_max &= DP_EDP_PWMGEN_BIT_COUNT_MASK;
++
++	fxp_min = DIV_ROUND_CLOSEST(fxp * 3, 4);
++	fxp_max = DIV_ROUND_CLOSEST(fxp * 5, 4);
++	if (fxp_min < (1 << pn_min) || (255 << pn_max) < fxp_max) {
++		DRM_DEBUG_KMS("VBT defined backlight frequency out of range\n");
++		return max_backlight;
++	}
++
++	for (pn = pn_max; pn >= pn_min; pn--) {
++		f = clamp(DIV_ROUND_CLOSEST(fxp, 1 << pn), 1, 255);
++		fxp_actual = f << pn;
++		if (fxp_min <= fxp_actual && fxp_actual <= fxp_max)
++			break;
++	}
++
++	DRM_DEBUG_KMS("Using eDP pwmgen bit count of %d\n", pn);
++	if (drm_dp_dpcd_writeb(&intel_dp->aux,
++			       DP_EDP_PWMGEN_BIT_COUNT, pn) < 0) {
++		DRM_DEBUG_KMS("Failed to write aux pwmgen bit count\n");
++		return max_backlight;
++	}
++	panel->backlight.pwmgen_bit_count = pn;
++
++	max_backlight = (1 << pn) - 1;
++
++	return max_backlight;
++}
++
+ static int intel_dp_aux_setup_backlight(struct intel_connector *connector,
+ 					enum pipe pipe)
+ {
+-	struct intel_dp *intel_dp = enc_to_intel_dp(&connector->encoder->base);
+ 	struct intel_panel *panel = &connector->panel;
+ 
+-	if (intel_dp->edp_dpcd[2] & DP_EDP_BACKLIGHT_BRIGHTNESS_BYTE_COUNT)
+-		panel->backlight.max = 0xFFFF;
+-	else
+-		panel->backlight.max = 0xFF;
++	panel->backlight.max = intel_dp_aux_calc_max_backlight(connector);
++	if (!panel->backlight.max)
++		return -ENODEV;
+ 
+ 	panel->backlight.min = 0;
+ 	panel->backlight.level = intel_dp_aux_get_backlight(connector);
+-
+ 	panel->backlight.enabled = panel->backlight.level != 0;
+ 
+ 	return 0;
+@@ -264,11 +325,17 @@ intel_dp_aux_display_control_capable(str
+ int intel_dp_aux_init_backlight_funcs(struct intel_connector *intel_connector)
+ {
+ 	struct intel_panel *panel = &intel_connector->panel;
+-	struct drm_i915_private *dev_priv = to_i915(intel_connector->base.dev);
++	struct intel_dp *intel_dp =
++		enc_to_intel_dp(&intel_connector->encoder->base);
++	struct drm_i915_private *dev_priv =
++		to_i915(intel_connector->base.dev);
+ 
+ 	if (i915_modparams.enable_dpcd_backlight == 0 ||
+ 	    (i915_modparams.enable_dpcd_backlight == -1 &&
+-	    dev_priv->vbt.backlight.type != INTEL_BACKLIGHT_VESA_EDP_AUX_INTERFACE))
++	     dev_priv->vbt.backlight.type !=
++		     INTEL_BACKLIGHT_VESA_EDP_AUX_INTERFACE &&
++	     !drm_dp_has_quirk(&intel_dp->desc,
++			       DP_DPCD_QUIRK_FORCE_DPCD_BACKLIGHT)))
+ 		return -ENODEV;
+ 
+ 	if (!intel_dp_aux_display_control_capable(intel_connector))
+diff -Npur linux/drivers/gpu/drm/i915/display/intel_dp_mst.c focal/drivers/gpu/drm/i915/display/intel_dp_mst.c
+--- linux/drivers/gpu/drm/i915/display/intel_dp_mst.c	2020-02-06 20:50:57.792134766 +0100
++++ focal/drivers/gpu/drm/i915/display/intel_dp_mst.c	2020-02-06 20:35:38.956098965 +0100
+@@ -653,21 +653,31 @@ intel_dp_mst_encoder_active_links(struct
+ int
+ intel_dp_mst_encoder_init(struct intel_digital_port *intel_dig_port, int conn_base_id)
+ {
++	struct drm_i915_private *i915 = to_i915(intel_dig_port->base.base.dev);
+ 	struct intel_dp *intel_dp = &intel_dig_port->dp;
+-	struct drm_device *dev = intel_dig_port->base.base.dev;
++	enum port port = intel_dig_port->base.port;
+ 	int ret;
+ 
+-	intel_dp->can_mst = true;
++	if (!HAS_DP_MST(i915) || intel_dp_is_edp(intel_dp))
++		return 0;
++
++	if (INTEL_GEN(i915) < 12 && port == PORT_A)
++		return 0;
++
++	if (INTEL_GEN(i915) < 11 && port == PORT_E)
++		return 0;
++
+ 	intel_dp->mst_mgr.cbs = &mst_cbs;
+ 
+ 	/* create encoders */
+ 	intel_dp_create_fake_mst_encoders(intel_dig_port);
+-	ret = drm_dp_mst_topology_mgr_init(&intel_dp->mst_mgr, dev,
++	ret = drm_dp_mst_topology_mgr_init(&intel_dp->mst_mgr, &i915->drm,
+ 					   &intel_dp->aux, 16, 3, conn_base_id);
+-	if (ret) {
+-		intel_dp->can_mst = false;
++	if (ret)
+ 		return ret;
+-	}
++
++	intel_dp->can_mst = true;
++
+ 	return 0;
+ }
+ 
+diff -Npur linux/drivers/gpu/drm/i915/display/intel_hdmi.c focal/drivers/gpu/drm/i915/display/intel_hdmi.c
+--- linux/drivers/gpu/drm/i915/display/intel_hdmi.c	2020-02-06 20:50:57.795468109 +0100
++++ focal/drivers/gpu/drm/i915/display/intel_hdmi.c	2020-02-06 20:35:38.959432309 +0100
+@@ -1232,6 +1232,11 @@ void intel_dp_dual_mode_set_tmds_output(
+ 	if (hdmi->dp_dual_mode.type < DRM_DP_DUAL_MODE_TYPE2_DVI)
+ 		return;
+ 
++	if (dev_priv->bypass_tmds_oe) {
++		DRM_DEBUG_KMS("Bypassing TMDS_OE setting\n");
++		return;
++	}
++
+ 	DRM_DEBUG_KMS("%s DP dual mode adaptor TMDS output\n",
+ 		      enable ? "Enabling" : "Disabling");
+ 
+diff -Npur linux/drivers/gpu/drm/i915/display/intel_lpe_audio.c focal/drivers/gpu/drm/i915/display/intel_lpe_audio.c
+--- linux/drivers/gpu/drm/i915/display/intel_lpe_audio.c	2020-02-06 20:50:57.795468109 +0100
++++ focal/drivers/gpu/drm/i915/display/intel_lpe_audio.c	2020-02-06 20:35:38.959432309 +0100
+@@ -172,6 +172,14 @@ static int lpe_audio_irq_init(struct drm
+ 				handle_simple_irq,
+ 				"hdmi_lpe_audio_irq_handler");
+ 
++	static const struct pci_device_id irq_quirk_ids[] = {
++		/* Dell Wyse 3040 */
++		{PCI_DEVICE_SUB(PCI_VENDOR_ID_INTEL, 0x22b0, 0x1028, 0x07c1)},
++		{}
++	};
++
++	if (pci_dev_present(irq_quirk_ids))
++		return 0;
+ 	return irq_set_chip_data(irq, dev_priv);
+ }
+ 
+diff -Npur linux/drivers/gpu/drm/i915/gt/intel_lrc.c focal/drivers/gpu/drm/i915/gt/intel_lrc.c
+--- linux/drivers/gpu/drm/i915/gt/intel_lrc.c	2020-02-06 20:50:57.805468137 +0100
++++ focal/drivers/gpu/drm/i915/gt/intel_lrc.c	2020-02-06 21:04:04.744385168 +0100
+@@ -471,12 +471,6 @@ lrc_descriptor(struct intel_context *ce,
+ 	return desc;
+ }
+ 
+-static void unwind_wa_tail(struct i915_request *rq)
+-{
+-	rq->tail = intel_ring_wrap(rq->ring, rq->wa_tail - WA_TAIL_BYTES);
+-	assert_ring_tail_valid(rq->ring, rq->tail);
+-}
+-
+ static struct i915_request *
+ __unwind_incomplete_requests(struct intel_engine_cs *engine)
+ {
+@@ -495,7 +489,6 @@ __unwind_incomplete_requests(struct inte
+ 			continue; /* XXX */
+ 
+ 		__i915_request_unsubmit(rq);
+-		unwind_wa_tail(rq);
+ 
+ 		/*
+ 		 * Push the request back into the queue for later resubmission.
+@@ -650,13 +643,29 @@ execlists_schedule_out(struct i915_reque
+ 	i915_request_put(rq);
+ }
+ 
+-static u64 execlists_update_context(const struct i915_request *rq)
++static u64 execlists_update_context(struct i915_request *rq)
+ {
+ 	struct intel_context *ce = rq->hw_context;
+-	u64 desc;
++	u64 desc = ce->lrc_desc;
++	u32 tail;
+ 
+-	ce->lrc_reg_state[CTX_RING_TAIL + 1] =
+-		intel_ring_set_tail(rq->ring, rq->tail);
++	/*
++	 * WaIdleLiteRestore:bdw,skl
++	 *
++	 * We should never submit the context with the same RING_TAIL twice
++	 * just in case we submit an empty ring, which confuses the HW.
++	 *
++	 * We append a couple of NOOPs (gen8_emit_wa_tail) after the end of
++	 * the normal request to be able to always advance the RING_TAIL on
++	 * subsequent resubmissions (for lite restore). Should that fail us,
++	 * and we try and submit the same tail again, force the context
++	 * reload.
++	 */
++	tail = intel_ring_set_tail(rq->ring, rq->tail);
++	if (unlikely(ce->lrc_reg_state[CTX_RING_TAIL + 1] == tail))
++		desc |= CTX_DESC_FORCE_RESTORE;
++	ce->lrc_reg_state[CTX_RING_TAIL + 1] = tail;
++	rq->tail = rq->wa_tail;
+ 
+ 	/*
+ 	 * Make sure the context image is complete before we submit it to HW.
+@@ -675,7 +684,6 @@ static u64 execlists_update_context(cons
+ 	 */
+ 	mb();
+ 
+-	desc = ce->lrc_desc;
+ 	ce->lrc_desc &= ~CTX_DESC_FORCE_RESTORE;
+ 
+ 	return desc;
+@@ -1150,16 +1158,6 @@ static void execlists_dequeue(struct int
+ 			if (!list_is_last(&last->sched.link,
+ 					  &engine->active.requests))
+ 				return;
+-
+-			/*
+-			 * WaIdleLiteRestore:bdw,skl
+-			 * Apply the wa NOOPs to prevent
+-			 * ring:HEAD == rq:TAIL as we resubmit the
+-			 * request. See gen8_emit_fini_breadcrumb() for
+-			 * where we prepare the padding after the
+-			 * end of the request.
+-			 */
+-			last->tail = last->wa_tail;
+ 		}
+ 	}
+ 
+diff -Npur linux/drivers/gpu/drm/i915/i915_drv.h focal/drivers/gpu/drm/i915/i915_drv.h
+--- linux/drivers/gpu/drm/i915/i915_drv.h	2020-02-06 20:50:57.812134824 +0100
++++ focal/drivers/gpu/drm/i915/i915_drv.h	2020-02-06 20:35:38.979432368 +0100
+@@ -1740,6 +1740,9 @@ struct drm_i915_private {
+ 
+ 	bool ipc_enabled;
+ 
++	/* Hack to bypass TMDS_OE write on DP->HDMI dongle */
++	bool bypass_tmds_oe;
++
+ 	/* Used to save the pipe-to-encoder mapping for audio */
+ 	struct intel_encoder *av_enc_map[I915_MAX_PIPES];
+ 
+diff -Npur linux/drivers/gpu/drm/i915/i915_params.c focal/drivers/gpu/drm/i915/i915_params.c
+--- linux/drivers/gpu/drm/i915/i915_params.c	2020-02-06 20:50:57.815468167 +0100
++++ focal/drivers/gpu/drm/i915/i915_params.c	2020-02-06 20:35:38.986099055 +0100
+@@ -171,7 +171,7 @@ i915_param_named_unsafe(inject_load_fail
+ 
+ i915_param_named(enable_dpcd_backlight, int, 0600,
+ 	"Enable support for DPCD backlight control"
+-	"(-1=use per-VBT LFP backlight type setting, 0=disabled [default], 1=enabled)");
++	"(-1=use per-VBT LFP backlight type setting [default], 0=disabled, 1=enabled)");
+ 
+ #if IS_ENABLED(CONFIG_DRM_I915_GVT)
+ i915_param_named(enable_gvt, bool, 0400,
+diff -Npur linux/drivers/gpu/drm/i915/i915_params.h focal/drivers/gpu/drm/i915/i915_params.h
+--- linux/drivers/gpu/drm/i915/i915_params.h	2020-02-06 20:50:57.815468167 +0100
++++ focal/drivers/gpu/drm/i915/i915_params.h	2020-02-06 20:35:38.986099055 +0100
+@@ -64,7 +64,7 @@ struct drm_printer;
+ 	param(int, reset, 2) \
+ 	param(unsigned int, inject_load_failure, 0) \
+ 	param(int, fastboot, -1) \
+-	param(int, enable_dpcd_backlight, 0) \
++	param(int, enable_dpcd_backlight, -1) \
+ 	param(char *, force_probe, CONFIG_DRM_I915_FORCE_PROBE) \
+ 	/* leave bools at the end to not create holes */ \
+ 	param(bool, alpha_support, IS_ENABLED(CONFIG_DRM_I915_ALPHA_SUPPORT)) \
+diff -Npur linux/drivers/gpu/drm/i915/i915_reg.h focal/drivers/gpu/drm/i915/i915_reg.h
+--- linux/drivers/gpu/drm/i915/i915_reg.h	2020-02-06 20:50:57.825468197 +0100
++++ focal/drivers/gpu/drm/i915/i915_reg.h	2020-02-06 21:04:04.747718509 +0100
+@@ -9110,6 +9110,9 @@ enum {
+ #define HSW_AUD_CHICKENBIT			_MMIO(0x65f10)
+ #define   SKL_AUD_CODEC_WAKE_SIGNAL		(1 << 15)
+ 
++#define AUD_PIN_BUF_CTL		_MMIO(0x48414)
++#define   AUD_PIN_BUF_ENABLE		REG_BIT(31)
++
+ /*
+  * HSW - ICL power wells
+  *
+diff -Npur linux/drivers/gpu/drm/i915/intel_pch.c focal/drivers/gpu/drm/i915/intel_pch.c
+--- linux/drivers/gpu/drm/i915/intel_pch.c	2020-02-06 20:50:57.825468197 +0100
++++ focal/drivers/gpu/drm/i915/intel_pch.c	2020-02-06 20:35:38.989432398 +0100
+@@ -74,6 +74,11 @@ intel_pch_type(const struct drm_i915_pri
+ 		WARN_ON(!IS_COFFEELAKE(dev_priv));
+ 		/* CometPoint is CNP Compatible */
+ 		return PCH_CNP;
++	case INTEL_PCH_CMP_V_DEVICE_ID_TYPE:
++		DRM_DEBUG_KMS("Found Comet Lake V PCH (CMP-V)\n");
++		WARN_ON(!IS_COFFEELAKE(dev_priv));
++		/* Comet Lake V PCH is based on KBP, which is SPT compatible */
++		return PCH_SPT;
+ 	case INTEL_PCH_ICP_DEVICE_ID_TYPE:
+ 		DRM_DEBUG_KMS("Found Ice Lake PCH\n");
+ 		WARN_ON(!IS_ICELAKE(dev_priv));
+diff -Npur linux/drivers/gpu/drm/i915/intel_pch.h focal/drivers/gpu/drm/i915/intel_pch.h
+--- linux/drivers/gpu/drm/i915/intel_pch.h	2020-02-06 20:50:57.825468197 +0100
++++ focal/drivers/gpu/drm/i915/intel_pch.h	2020-02-06 20:35:38.989432398 +0100
+@@ -42,6 +42,7 @@ enum intel_pch {
+ #define INTEL_PCH_CNP_LP_DEVICE_ID_TYPE		0x9D80
+ #define INTEL_PCH_CMP_DEVICE_ID_TYPE		0x0280
+ #define INTEL_PCH_CMP2_DEVICE_ID_TYPE		0x0680
++#define INTEL_PCH_CMP_V_DEVICE_ID_TYPE		0xA380
+ #define INTEL_PCH_ICP_DEVICE_ID_TYPE		0x3480
+ #define INTEL_PCH_MCC_DEVICE_ID_TYPE		0x4B00
+ #define INTEL_PCH_MCC2_DEVICE_ID_TYPE		0x3880
+--- a/include/drm/drm_dp_helper.h
++++ b/include/drm/drm_dp_helper.h
+@@ -1520,6 +1520,14 @@ enum drm_dp_quirk {
+ 	 * The driver should ignore SINK_COUNT during detection.
+ 	 */
+ 	DP_DPCD_QUIRK_NO_SINK_COUNT,
++	/**
++	 * @DP_DPCD_QUIRK_FORCE_DPCD_BACKLIGHT:
++	 *
++	 * The device is telling the truth when it says that it uses DPCD
++	 * backlight controls, even if the system's firmware disagrees.
++	 * The driver should honor the DPCD backlight capabilities advertised.
++	 */
++	DP_DPCD_QUIRK_FORCE_DPCD_BACKLIGHT,
+ };
+ 
+ /**
