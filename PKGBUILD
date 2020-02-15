@@ -12,7 +12,7 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20191223
-pkgver=5.4.19
+pkgver=5.4.20
 pkgrel=1
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
@@ -45,6 +45,9 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0009-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch'
         '0010-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
         '0014-drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
+        '0015-iwlwifi-mvm-do-not-require-PHY_SKU-NVM-section-for-3168-devices.patch'
+        '0016-drm-i915-wean-off-drm_pci_alloc-drm_pci_free.patch'
+        '0017-drm-remove-PageReserved-manipulation-from-drm_pci_alloc.patch'
         # UBUNTU Patches
         '0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch'
         '0002-apparmor-af_unix-mediation.patch'
@@ -70,7 +73,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            '0873fb02303e01e2b3fa921c4c56585715ccbfee16b66c197edec767acd569f1'
+            'a3fa58e27a36b8e363f95207206cf8cb162ec348cf8ccb8c6c4f9c478f2ca1b6'
             '0a6a8a7c13a7e15024a1f6fa93ff7948845246103de0e0cae5a78776b1724afe'
             'bfe52746bfc04114627b6f1e0dd94bc05dd94abe8f6dbee770f78d6116e315e8'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
@@ -93,6 +96,9 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '5257159e20a5fcb102a3b3ee6de33882a9e132e7f1d4345b8730effdd0240bb6'
             '763cd8e7d5b4a5c24f7a82f24c64ec5503ea5c81dfb42fa74150136c0ca066fd'
             'cba63c224af57d6b9432bb5f507121148d02b313c5f87c55504f49632a3a6062'
+            '1ca5a951775a3fbdb524d734ee27d5076d95d4bb35532923eecbfa5318ef3402'
+            '7ba2fb9c8387bb9ddeab388e95283bdae285add6543e7e121053bff55f84bf47'
+            'c39011b7aef8e3f06c5a2fb4e5a0ea4ee6c452eb26518d05fbb7889a40487892'
             '98202b8ad70d02d86603294bae967874fa7b18704b5c7b867568b0fd33a08921'
             '5cbbf3db9ea3205e9b89fe3049bea6dd626181db0cb0dc461e4cf5a400c68dd6'
             'c7dbec875d0c1d6782c037a1dcefff2e5bdb5fc9dffac1beea07dd8c1bdef1d7'
@@ -140,17 +146,20 @@ prepare() {
   patch -Np1 -i '../add-nvme-hwmon-temp.patch'
 
   # drm-i915 backports by Ubuntu
-  patch -Np1 -i '../0001-drm-i915-ubuntu-5.4.18-focal-2020-02-06.patch'
+  #patch -Np1 -i '../0001-drm-i915-ubuntu-5.4.18-focal-2020-02-06.patch'
   
   # other fixes by Arch
   patch -Np1 -i '../0004-PCI-pciehp-prevent-deadlock-on-disconnect.patch'
   patch -Np1 -i '../0005-ACPI-PM-s2idle-rework-ACPI-events-sync.patch'
   patch -Np1 -i '../0006-iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch'
-  #patch -Np1 -i '../0007-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
-  #patch -Np1 -i '../0008-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
-  #patch -Np1 -i '../0009-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch'
-  #patch -Np1 -i '../0010-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
+  patch -Np1 -i '../0007-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
+  patch -Np1 -i '../0008-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
+  patch -Np1 -i '../0009-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch'
+  patch -Np1 -i '../0010-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
   patch -Np1 -i '../0014-drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
+  patch -Np1 -i '../0015-iwlwifi-mvm-do-not-require-PHY_SKU-NVM-section-for-3168-devices.patch'
+  patch -Np1 -i '../0016-drm-i915-wean-off-drm_pci_alloc-drm_pci_free.patch'
+  patch -Np1 -i '../0017-drm-remove-PageReserved-manipulation-from-drm_pci_alloc.patch'
 
   # https://bbs.archlinux.org/viewtopic.php?pid=1883376#p1883376
   # https://gitlab.manjaro.org/packages/core/linux54/issues/5
