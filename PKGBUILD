@@ -12,7 +12,7 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20191223
-pkgver=5.4.20
+pkgver=5.4.21
 pkgrel=1
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
@@ -53,7 +53,6 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0002-apparmor-af_unix-mediation.patch'
         '0003-apparmor-fix-use-after-free-in-sk_peer_label.patch'
         '0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch'
-        '0001-drm-i915-ubuntu-5.4.18-focal-2020-02-06.patch'
         # MANJARO Patches
         '0001-nonupstream-navi10-vfio-reset.patch'
         '0001-i2c-nuvoton-nc677x-hwmon-driver.patch'
@@ -73,7 +72,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            'a3fa58e27a36b8e363f95207206cf8cb162ec348cf8ccb8c6c4f9c478f2ca1b6'
+            'a8a136ffa760eb998b2916fee5b8935c5f70c7233b57f8a8dde8f61dd48fc908'
             '0a6a8a7c13a7e15024a1f6fa93ff7948845246103de0e0cae5a78776b1724afe'
             'bfe52746bfc04114627b6f1e0dd94bc05dd94abe8f6dbee770f78d6116e315e8'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
@@ -89,7 +88,7 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '7baea65989ef0d29ab4eb8296759193b8f93c31248d08e944e1bdf0059ccdfdd'
             'abcf6043c594d5514118124a8f2cf8787557a95338fa0ff7f28a142567bafed0'
             '2431629465ca508a203df31ee14f614c061f6efc128ec858cecb4a3a2ee5f1d0'
-            '25d72c2c88088d78afa1658fc16c8d4ad98f4140ec69fa0ade49abfe27e8f722'
+            'daa26a753566d21fb364e7b7168f28027a251d2e29fcbf0484b2199518f22e92'
             'fcb9e515bf0816db05446fd8ced7468756bea3cf01b060504bace41b2e7f5f74'
             'e2084feabc3abeed37579ff515c367014356a652b85794b1612fea4daabe85d3'
             '988ffbb96d85564a9d96145e5973339a8f78ae95d919efb2ee7bb50f7a8e8fc9'
@@ -103,7 +102,6 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '5cbbf3db9ea3205e9b89fe3049bea6dd626181db0cb0dc461e4cf5a400c68dd6'
             'c7dbec875d0c1d6782c037a1dcefff2e5bdb5fc9dffac1beea07dd8c1bdef1d7'
             '77746aea71ffb06c685e7769b49c78e29af9b2e28209cd245e95d9cbb0dba3c9'
-            '8660c73297e5327f70acb0b990501950bd565b917f017c45247fdf789133214a'
             '7a2758f86dd1339f0f1801de2dbea059b55bf3648e240878b11e6d6890d3089c'
             '0556859a8168c8f7da9af8e2059d33216d9e5378d2cac70ca54c5ff843fa5add'
             'fa57b3d150ec741870fd67633b83084bb9947ed1efb11229217e0a4fd3d5669d'

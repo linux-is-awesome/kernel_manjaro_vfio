@@ -26,7 +26,7 @@ diff --git a/drivers/acpi/sleep.c b/drivers/acpi/sleep.c
 index 2af937a8b1c5..6747a279621b 100644
 --- a/drivers/acpi/sleep.c
 +++ b/drivers/acpi/sleep.c
-@@ -977,6 +977,16 @@ static int acpi_s2idle_prepare_late(void)
+@@ -977,6 +977,16 @@ static int acpi_s2idle_prepare_late(void
  	return 0;
  }
  
@@ -40,10 +40,10 @@ index 2af937a8b1c5..6747a279621b 100644
 +	acpi_os_wait_events_complete(); /* synchronize Notify handling */
 +}
 +
- static void acpi_s2idle_wake(void)
+ static bool acpi_s2idle_wake(void)
  {
- 	/*
-@@ -1001,13 +1011,8 @@ static void acpi_s2idle_wake(void)
+ 	if (!acpi_sci_irq_valid())
+@@ -1014,13 +1024,8 @@ static bool acpi_s2idle_wake(void)
  		 * should be missed by canceling the wakeup here.
  		 */
  		pm_system_cancel_wakeup();
@@ -57,9 +57,9 @@ index 2af937a8b1c5..6747a279621b 100644
 +
 +		acpi_s2idle_sync();
  
- 		rearm_wake_irq(acpi_sci_irq);
- 	}
-@@ -1024,6 +1029,13 @@ static void acpi_s2idle_restore_early(void)
+ 		/*
+ 		 * The SCI is in the "suspended" state now and it cannot produce
+@@ -1048,6 +1053,13 @@ static void acpi_s2idle_restore_early(vo
  
  static void acpi_s2idle_restore(void)
  {
