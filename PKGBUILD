@@ -12,7 +12,7 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20191223
-pkgver=5.4.32
+pkgver=5.4.33
 pkgrel=1
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
@@ -38,7 +38,6 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0002-lib-devres-add-a-helper-function-for-ioremap_uc.patch'
         '0003-mfd-intel-lpss-use-devm_ioremap_uc-for-MMIO.patch'
         '0004-PCI-pciehp-prevent-deadlock-on-disconnect.patch'
-#        '0005-ACPI-PM-s2idle-rework-ACPI-events-sync.patch'
         '0006-iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch'
         '0007-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
         '0008-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
@@ -46,7 +45,6 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0010-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
         '0014-drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
         '0015-iwlwifi-mvm-do-not-require-PHY_SKU-NVM-section-for-3168-devices.patch'
-        '0017-drm-remove-PageReserved-manipulation-from-drm_pci_alloc.patch'
         # UBUNTU Patches
         '0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch'
         '0002-apparmor-af_unix-mediation.patch'
@@ -71,7 +69,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            '3f200361532c6f4ddc6bafdf593accb9a3ec25f64296c1d66d68f2ccc1b12d9a'
+            '557cd21952003913271b8f659f336d6bbf2ec0f9a6a5eea27e1926708282f3a6'
             '24d1704eb5674b9ec6d37938813c7f858d8b2be2a85581a0a1cd68d3cc660a2d'
             'bfe52746bfc04114627b6f1e0dd94bc05dd94abe8f6dbee770f78d6116e315e8'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
@@ -94,7 +92,6 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '763cd8e7d5b4a5c24f7a82f24c64ec5503ea5c81dfb42fa74150136c0ca066fd'
             'cba63c224af57d6b9432bb5f507121148d02b313c5f87c55504f49632a3a6062'
             '1ca5a951775a3fbdb524d734ee27d5076d95d4bb35532923eecbfa5318ef3402'
-            'c39011b7aef8e3f06c5a2fb4e5a0ea4ee6c452eb26518d05fbb7889a40487892'
             '98202b8ad70d02d86603294bae967874fa7b18704b5c7b867568b0fd33a08921'
             '5cbbf3db9ea3205e9b89fe3049bea6dd626181db0cb0dc461e4cf5a400c68dd6'
             'c7dbec875d0c1d6782c037a1dcefff2e5bdb5fc9dffac1beea07dd8c1bdef1d7'
@@ -145,15 +142,12 @@ prepare() {
   
   # other fixes by Arch
   patch -Np1 -i '../0004-PCI-pciehp-prevent-deadlock-on-disconnect.patch'
-#  patch -Np1 -i '../0005-ACPI-PM-s2idle-rework-ACPI-events-sync.patch'
   patch -Np1 -i '../0006-iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch'
   patch -Np1 -i '../0007-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
   patch -Np1 -i '../0008-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
   patch -Np1 -i '../0009-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch'
   patch -Np1 -i '../0010-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
   patch -Np1 -i '../0014-drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
-#  patch -Np1 -i '../0015-iwlwifi-mvm-do-not-require-PHY_SKU-NVM-section-for-3168-devices.patch'
-  patch -Np1 -i '../0017-drm-remove-PageReserved-manipulation-from-drm_pci_alloc.patch'
 
   # https://bbs.archlinux.org/viewtopic.php?pid=1883376#p1883376
   # https://gitlab.manjaro.org/packages/core/linux54/issues/5
