@@ -13,7 +13,7 @@ _basekernel=5.4
 _basever=54
 _aufs=20191223
 pkgver=5.4.33
-pkgrel=1
+pkgrel=2
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
 license=('GPL2')
@@ -67,7 +67,8 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0010-bootsplash.patch'
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
-        '0013-bootsplash.patch')
+        '0013-bootsplash.patch'
+        fix-amdgpu-hang.patch::https://cgit.freedesktop.org/~agd5f/linux/patch/?id=b2a7e9735ab2864330be9d00d7f38c961c28de5d)
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '557cd21952003913271b8f659f336d6bbf2ec0f9a6a5eea27e1926708282f3a6'
             '24d1704eb5674b9ec6d37938813c7f858d8b2be2a85581a0a1cd68d3cc660a2d'
@@ -111,12 +112,15 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             'e9f22cbb542591087d2d66dc6dc912b1434330ba3cd13d2df741d869a2c31e89'
             '27471eee564ca3149dd271b0817719b5565a9594dc4d884fe3dc51a5f03832bc'
             '60e295601e4fb33d9bf65f198c54c7eb07c0d1e91e2ad1e0dd6cd6e142cb266d'
-            '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef')
+            '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef'
+            '18408c39f3bad1ccf23f7f8debe8e31e4e8a26017b34d9be7096d63f3cb68145')
 prepare() {
   cd "${srcdir}/linux-${_basekernel}"
 
   # add upstream patch
   patch -p1 -i "${srcdir}/patch-${pkgver}"
+
+  patch -Np1 -i ../fix-amdgpu-hang.patch
 
   # add latest fixes from stable queue, if needed
   # http://git.kernel.org/?p=linux/kernel/git/stable/stable-queue.git
