@@ -12,8 +12,8 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20191223
-pkgver=5.4.33
-pkgrel=3
+pkgver=5.4.34
+pkgrel=1
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
 license=('GPL2')
@@ -54,7 +54,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0001-nonupstream-navi10-vfio-reset.patch'
         '0001-i2c-nuvoton-nc677x-hwmon-driver.patch'
         'add-nvme-hwmon-temp.patch'
-	"prepatch-${_basekernel}.patch"
+	#"prepatch-${_basekernel}.patch"
         # Bootsplash
         '0001-bootsplash.patch'
         '0002-bootsplash.patch'
@@ -70,7 +70,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            '557cd21952003913271b8f659f336d6bbf2ec0f9a6a5eea27e1926708282f3a6'
+            '6a81aa72a5d3eb1e12720be9ef84355a5bac313c7f7521a32955b99c61b51939'
             '24d1704eb5674b9ec6d37938813c7f858d8b2be2a85581a0a1cd68d3cc660a2d'
             'bfe52746bfc04114627b6f1e0dd94bc05dd94abe8f6dbee770f78d6116e315e8'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
@@ -100,7 +100,6 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '7a2758f86dd1339f0f1801de2dbea059b55bf3648e240878b11e6d6890d3089c'
             '0556859a8168c8f7da9af8e2059d33216d9e5378d2cac70ca54c5ff843fa5add'
             'fa57b3d150ec741870fd67633b83084bb9947ed1efb11229217e0a4fd3d5669d'
-            '8074eb2785577f2caa29d71eb0ad1223a54ffbec4a5fab8568976508e76ddf4d'
             'a504f6cf84094e08eaa3cc5b28440261797bf4f06f04993ee46a20628ff2b53c'
             'e096b127a5208f56d368d2cb938933454d7200d70c86b763aa22c38e0ddb8717'
             '8c1c880f2caa9c7ae43281a35410203887ea8eae750fe8d360d0c8bf80fcc6e0'
@@ -123,7 +122,7 @@ prepare() {
   # add latest fixes from stable queue, if needed
   # http://git.kernel.org/?p=linux/kernel/git/stable/stable-queue.git
   # enable only if you have "gen-stable-queue-patch.sh" executed before
-  patch -Np1 -i "${srcdir}/prepatch-${_basekernel}.patch"
+  #patch -Np1 -i "${srcdir}/prepatch-${_basekernel}.patch"
 
   # disable USER_NS for non-root users by default
   patch -Np1 -i ../0001-ZEN-Add-sysctl-and-CONFIG-to-disallow-unprivileged-CLONE_NEWUSER.patch
