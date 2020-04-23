@@ -12,7 +12,7 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20191223
-pkgver=5.4.34
+pkgver=5.4.35
 pkgrel=1
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
@@ -70,7 +70,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            '6a81aa72a5d3eb1e12720be9ef84355a5bac313c7f7521a32955b99c61b51939'
+            '7fda2ef7e81faa2ea7e4e1a4d73c0ffcdcc259a1345b9248bddde68b1c06af4f'
             '24d1704eb5674b9ec6d37938813c7f858d8b2be2a85581a0a1cd68d3cc660a2d'
             'bfe52746bfc04114627b6f1e0dd94bc05dd94abe8f6dbee770f78d6116e315e8'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
@@ -358,4 +358,4 @@ package_linux54-headers() {
   done < <(find "${_builddir}/scripts" -type f -perm -u+w -print0 2>/dev/null)
 }
 
-_server=cx51
+_server=cpx51
