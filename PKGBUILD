@@ -129,8 +129,8 @@ prepare() {
 
   # fix dell xps 13 2-in-1 issue
   # https://lkml.org/lkml/2019/10/16/1230
-  patch -Np1 -i '../0002-lib-devres-add-a-helper-function-for-ioremap_uc.patch'
-  patch -Np1 -i '../0003-mfd-intel-lpss-use-devm_ioremap_uc-for-MMIO.patch'
+  #patch -Np1 -i '../0002-lib-devres-add-a-helper-function-for-ioremap_uc.patch'
+  #patch -Np1 -i '../0003-mfd-intel-lpss-use-devm_ioremap_uc-for-MMIO.patch'
 
   # https://twitter.com/vskye11/status/1216240051639791616
   patch -Np1 -i '../0001-i2c-nuvoton-nc677x-hwmon-driver.patch'
