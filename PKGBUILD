@@ -12,7 +12,7 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20191223
-pkgver=5.4.40
+pkgver=5.4.41
 pkgrel=1
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
@@ -44,6 +44,9 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0010-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
         '0014-drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
         '0015-iwlwifi-mvm-do-not-require-PHY_SKU-NVM-section-for-3168-devices.patch'
+        '0001-gcc-common.h-Update-for-GCC-10.patch'
+        '0002-Makefile-disallow-data-races-on-gcc-10-as-well.patch'
+        '0003-x86-Fix-early-boot-crash-on-gcc-10-next-try.patch'
         # UBUNTU Patches
         '0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch'
         '0002-apparmor-af_unix-mediation.patch'
@@ -70,7 +73,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            'f93fb96be91f12956eb3fbba84411b82ab5e285b4c97107af0509621f0264481'
+            'a63a76cf5c40790cc3a6a39521cd2f71ca892edcb8e7c4b6566963c2bac69605'
             '24d1704eb5674b9ec6d37938813c7f858d8b2be2a85581a0a1cd68d3cc660a2d'
             'bfe52746bfc04114627b6f1e0dd94bc05dd94abe8f6dbee770f78d6116e315e8'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
@@ -92,6 +95,9 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '763cd8e7d5b4a5c24f7a82f24c64ec5503ea5c81dfb42fa74150136c0ca066fd'
             'cba63c224af57d6b9432bb5f507121148d02b313c5f87c55504f49632a3a6062'
             '1ca5a951775a3fbdb524d734ee27d5076d95d4bb35532923eecbfa5318ef3402'
+            '2b63997760aa823b5907c3c5653f35265e9c6320b812b4f4a8e7c74256dab7c7'
+            '875400c2dded3c05588025e0095b529c53f317abcccc99507eff0a75f24aa93f'
+            'b7505c345722c4c1ca27c8d99114d4b8746e530acd9b7c4e5a0601b89bfba2d2'
             '98202b8ad70d02d86603294bae967874fa7b18704b5c7b867568b0fd33a08921'
             '5cbbf3db9ea3205e9b89fe3049bea6dd626181db0cb0dc461e4cf5a400c68dd6'
             'c7dbec875d0c1d6782c037a1dcefff2e5bdb5fc9dffac1beea07dd8c1bdef1d7'
@@ -142,6 +148,9 @@ prepare() {
   #patch -Np1 -i '../0001-drm-i915-ubuntu-5.4.18-focal-2020-02-06.patch'
   
   # other fixes by Arch
+  patch -Np1 -i "${srcdir}/0001-gcc-common.h-Update-for-GCC-10.patch"
+  patch -Np1 -i "${srcdir}/0002-Makefile-disallow-data-races-on-gcc-10-as-well.patch"
+  patch -Np1 -i "${srcdir}/0003-x86-Fix-early-boot-crash-on-gcc-10-next-try.patch"
   patch -Np1 -i '../0006-iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch'
   patch -Np1 -i '../0007-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
   patch -Np1 -i '../0008-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
