@@ -12,7 +12,7 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20191223
-pkgver=5.4.41
+pkgver=5.4.42
 pkgrel=1
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
@@ -44,9 +44,6 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0010-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
         '0014-drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
         '0015-iwlwifi-mvm-do-not-require-PHY_SKU-NVM-section-for-3168-devices.patch'
-        '0001-gcc-common.h-Update-for-GCC-10.patch'
-        '0002-Makefile-disallow-data-races-on-gcc-10-as-well.patch'
-        '0003-x86-Fix-early-boot-crash-on-gcc-10-next-try.patch'
         # UBUNTU Patches
         '0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch'
         '0002-apparmor-af_unix-mediation.patch'
@@ -73,7 +70,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            'a63a76cf5c40790cc3a6a39521cd2f71ca892edcb8e7c4b6566963c2bac69605'
+            'c01da2932dd8c04965760ca674abf8f150d456553bc9148bee1823f4c48a39d2'
             '24d1704eb5674b9ec6d37938813c7f858d8b2be2a85581a0a1cd68d3cc660a2d'
             'bfe52746bfc04114627b6f1e0dd94bc05dd94abe8f6dbee770f78d6116e315e8'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
@@ -95,9 +92,6 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '763cd8e7d5b4a5c24f7a82f24c64ec5503ea5c81dfb42fa74150136c0ca066fd'
             'cba63c224af57d6b9432bb5f507121148d02b313c5f87c55504f49632a3a6062'
             '1ca5a951775a3fbdb524d734ee27d5076d95d4bb35532923eecbfa5318ef3402'
-            '2b63997760aa823b5907c3c5653f35265e9c6320b812b4f4a8e7c74256dab7c7'
-            '875400c2dded3c05588025e0095b529c53f317abcccc99507eff0a75f24aa93f'
-            'b7505c345722c4c1ca27c8d99114d4b8746e530acd9b7c4e5a0601b89bfba2d2'
             '98202b8ad70d02d86603294bae967874fa7b18704b5c7b867568b0fd33a08921'
             '5cbbf3db9ea3205e9b89fe3049bea6dd626181db0cb0dc461e4cf5a400c68dd6'
             'c7dbec875d0c1d6782c037a1dcefff2e5bdb5fc9dffac1beea07dd8c1bdef1d7'
@@ -130,7 +124,7 @@ prepare() {
   # enable only if you have "gen-stable-queue-patch.sh" executed before
   #patch -Np1 -i "${srcdir}/prepatch-${_basekernel}.patch"
 
-  # disable USER_NS for non-root users by default
+  msg "disable USER_NS for non-root users"
   patch -Np1 -i ../0001-ZEN-Add-sysctl-and-CONFIG-to-disallow-unprivileged-CLONE_NEWUSER.patch
 
   # fix dell xps 13 2-in-1 issue
@@ -138,48 +132,51 @@ prepare() {
   #patch -Np1 -i '../0002-lib-devres-add-a-helper-function-for-ioremap_uc.patch'
   #patch -Np1 -i '../0003-mfd-intel-lpss-use-devm_ioremap_uc-for-MMIO.patch'
 
+  msg "nuvoton hwmon driver patch"
   # https://twitter.com/vskye11/status/1216240051639791616
   patch -Np1 -i '../0001-i2c-nuvoton-nc677x-hwmon-driver.patch'
   
+  msg "packport nvme hwmon"
   # backport NVME HWMON
   patch -Np1 -i '../add-nvme-hwmon-temp.patch'
 
   # drm-i915 backports by Ubuntu
   #patch -Np1 -i '../0001-drm-i915-ubuntu-5.4.18-focal-2020-02-06.patch'
   
-  # other fixes by Arch
-  patch -Np1 -i "${srcdir}/0001-gcc-common.h-Update-for-GCC-10.patch"
-  patch -Np1 -i "${srcdir}/0002-Makefile-disallow-data-races-on-gcc-10-as-well.patch"
-  patch -Np1 -i "${srcdir}/0003-x86-Fix-early-boot-crash-on-gcc-10-next-try.patch"
+  msg "restore Killer-Qu-CO-NICs support"
   patch -Np1 -i '../0006-iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch'
+  msg "drm-i915 patches"
   patch -Np1 -i '../0007-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
   patch -Np1 -i '../0008-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
   patch -Np1 -i '../0009-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch'
   patch -Np1 -i '../0010-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
+  msg "drm amdgpu patch"
   patch -Np1 -i '../0014-drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
 
   # https://bbs.archlinux.org/viewtopic.php?pid=1883376#p1883376
   # https://gitlab.manjaro.org/packages/core/linux54/issues/5
   # No patch yet found ...
 
-  # add patches for snapd
+  msg "snapd patches"
   # https://gitlab.com/apparmor/apparmor-kernel/tree/5.2-outoftree
   patch -Np1 -i "${srcdir}/0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch"
   patch -Np1 -i "${srcdir}/0002-apparmor-af_unix-mediation.patch"
   patch -Np1 -i "${srcdir}/0003-apparmor-fix-use-after-free-in-sk_peer_label.patch"
   patch -Np1 -i "${srcdir}/0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch"
 
+  msg "navi10-vfio reset patch"
   # TODO: remove when AMD properly fixes it!
   # INFO: this is a hack and won't be upstreamed
   # https://forum.level1techs.com/t/145666/86
   # https://forum.manjaro.org/t/107820/11
   patch -Np1 -i "${srcdir}/0001-nonupstream-navi10-vfio-reset.patch"
   
-  # handling of multiple fans on Lenovo P50
+  msg "handling of multiple fans on Lenovo P50"
   # https://github.com/vmatare/thinkfan/issues/58
   patch -Np1 -i "${srcdir}/0005-thinkpad_acpi_dual_fan_control.patch"
     
-  # Add bootsplash - http://lkml.iu.edu/hypermail/linux/kernel/1710.3/01542.html
+  msg "bootsplash patches"
+  # http://lkml.iu.edu/hypermail/linux/kernel/1710.3/01542.html
   patch -Np1 -i "${srcdir}/0001-bootsplash.patch"
   patch -Np1 -i "${srcdir}/0002-bootsplash.patch"
   patch -Np1 -i "${srcdir}/0003-bootsplash.patch"
@@ -195,7 +192,7 @@ prepare() {
   # use git-apply to add binary files
   git apply -p1 < "${srcdir}/0013-bootsplash.patch"
 
-  # add aufs5 support
+  msg "add aufs5 support"
   patch -Np1 -i "${srcdir}/aufs5.4-${_aufs}.patch"
   patch -Np1 -i "${srcdir}/aufs5-base.patch"
   patch -Np1 -i "${srcdir}/aufs5-kbuild.patch"
@@ -218,16 +215,17 @@ prepare() {
     sed -i "s|CONFIG_LOCALVERSION_AUTO=.*|CONFIG_LOCALVERSION_AUTO=n|" ./.config
   fi
 
-  # set patchlevel to 4
+  msg "set patchlevel to 4"
   sed -ri "s|^(PATCHLEVEL =).*|\1 4|" Makefile
 
-  # set extraversion to pkgrel
+  msg "set extraversion to pkgrel"
   sed -ri "s|^(EXTRAVERSION =).*|\1 -${pkgrel}|" Makefile
 
-  # don't run depmod on 'make install'. We'll do this ourselves in packaging
+  msg "don't run depmod on 'make install'"
+  # We'll do this ourselves in packaging
   sed -i '2iexit 0' scripts/depmod.sh
 
-  # get kernel version
+  msg "get kernel version"
   make prepare
 
   # load configuration
@@ -238,14 +236,14 @@ prepare() {
   #make oldconfig # using old config from previous kernel version
   # ... or manually edit .config
 
-  # rewrite configuration
+  msg "rewrite configuration"
   yes "" | make config >/dev/null
 }
 
 build() {
   cd "${srcdir}/linux-${_basekernel}"
 
-  # build!
+  msg "build"
   make ${MAKEFLAGS} LOCALVERSION= bzImage modules
 }
 
