@@ -52,6 +52,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         # MANJARO Patches
         '0001-nonupstream-navi10-vfio-reset.patch'
         '0001-i2c-nuvoton-nc677x-hwmon-driver.patch'
+        "$pkgname-ath9k-fix-general-protection-fault-in-ath9k_hif_usb_rx_cb.patch::https://git.kernel.org/pub/scm/linux/kernel/git/stable/stable-queue.git/plain/releases/5.4.47/ath9k-fix-general-protection-fault-in-ath9k_hif_usb_rx_cb.patch"
         'add-nvme-hwmon-temp.patch'
         # Lenovo P50 multiple fans
         '0005-thinkpad_acpi_dual_fan_control.patch::https://github.com/dvhart/linux-pdx86/commit/26c16f9d956f269bbc32e034e3ec11c4831137de.patch'
@@ -131,6 +132,10 @@ prepare() {
   # https://lkml.org/lkml/2019/10/16/1230
   #patch -Np1 -i '../0002-lib-devres-add-a-helper-function-for-ioremap_uc.patch'
   #patch -Np1 -i '../0003-mfd-intel-lpss-use-devm_ioremap_uc-for-MMIO.patch'
+
+  msg "ath9k revert patch"
+  # https://forum.manjaro.org/t/testing-update-2020-06-26-kernels-mesa-20-1-2-haskell/150212/22
+  patch -Rp1 -i "${srcdir}/$pkgname-ath9k-fix-general-protection-fault-in-ath9k_hif_usb_rx_cb.patch"
 
   msg "nuvoton hwmon driver patch"
   # https://twitter.com/vskye11/status/1216240051639791616
