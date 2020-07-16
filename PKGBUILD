@@ -12,7 +12,7 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20200518
-pkgver=5.4.51
+pkgver=5.4.52
 pkgrel=1
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
@@ -21,7 +21,6 @@ makedepends=('xmlto' 'docbook-xsl' 'kmod' 'inetutils' 'bc' 'elfutils' 'git')
 options=('!strip')
 source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.xz"
         "https://www.kernel.org/pub/linux/kernel/v5.x/patch-${pkgver}.xz"
-        #"prepatch-${_basekernel}.patch"
         # the main kernel config files
         'config.x86_64' 'config' 'config.aufs'
         # AUFS Patches
@@ -35,27 +34,21 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         'vfs-ino.patch'
         # ARCH Patches
         '0001-ZEN-Add-sysctl-and-CONFIG-to-disallow-unprivileged-CLONE_NEWUSER.patch'
-        '0002-lib-devres-add-a-helper-function-for-ioremap_uc.patch'
-        '0003-mfd-intel-lpss-use-devm_ioremap_uc-for-MMIO.patch'
-        '0006-iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch'
-        '0007-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
-        '0008-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
-        '0009-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch'
-        '0010-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
-        '0014-drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
-        '0015-iwlwifi-mvm-do-not-require-PHY_SKU-NVM-section-for-3168-devices.patch'
-        # UBUNTU Patches
+        # MANJARO Patches
+        '0001-i2c-nuvoton-nc677x-hwmon-driver.patch'
+        '0001-iomap-iomap_bmap-should-accept-unwritten-maps.patch'
+        '0001-futex.patch'
         '0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch'
         '0002-apparmor-af_unix-mediation.patch'
         '0003-apparmor-fix-use-after-free-in-sk_peer_label.patch'
         '0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch'
-        # MANJARO Patches
-        '0001-nonupstream-navi10-vfio-reset.patch'
-        '0001-i2c-nuvoton-nc677x-hwmon-driver.patch'
-        "$pkgname-ath9k-fix-general-protection-fault-in-ath9k_hif_usb_rx_cb.patch::https://git.kernel.org/pub/scm/linux/kernel/git/stable/stable-queue.git/plain/releases/5.4.47/ath9k-fix-general-protection-fault-in-ath9k_hif_usb_rx_cb.patch"
-        'add-nvme-hwmon-temp.patch'
         # Lenovo P50 multiple fans
         '0005-thinkpad_acpi_dual_fan_control.patch::https://github.com/dvhart/linux-pdx86/commit/26c16f9d956f269bbc32e034e3ec11c4831137de.patch'
+         # Lenovo + AMD
+        '0001-nonupstream-navi10-vfio-reset.patch'
+        '0001-lenovo-wmi1.patch'
+        '0001-lenovo-wmi2.patch'
+        '0002-pinctrl-amd.patch'
         # Bootsplash
         '0001-bootsplash.patch'
         '0002-bootsplash.patch'
@@ -71,7 +64,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            'f4bf602d1e422c3d38ae08765f5a03beee5533f585cdd6cfdca3c14b09464660'
+            '558b3447ea7dcc37d2e44197ca8556ffa4430ca79599c9c127707ad8b1547e5f'
             '2cecd5e20dc71b0392cc57be3666f1427c89cf576181a83b872e1674974a0db6'
             'bfe52746bfc04114627b6f1e0dd94bc05dd94abe8f6dbee770f78d6116e315e8'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
@@ -84,24 +77,18 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '101ac92871078a1e72320cd0d7432e0a44e28c50864b2cd46ae57a026e021387'
             '9087b14760b203fe6939baccbb7d59ccf256e71f20b5355326702bc890de4ed8'
             '7685d526bbdbfa795986591a70071c960ff572f56d3501774861728a9df8664c'
-            '7baea65989ef0d29ab4eb8296759193b8f93c31248d08e944e1bdf0059ccdfdd'
-            'abcf6043c594d5514118124a8f2cf8787557a95338fa0ff7f28a142567bafed0'
-            'fcb9e515bf0816db05446fd8ced7468756bea3cf01b060504bace41b2e7f5f74'
-            'e2084feabc3abeed37579ff515c367014356a652b85794b1612fea4daabe85d3'
-            '988ffbb96d85564a9d96145e5973339a8f78ae95d919efb2ee7bb50f7a8e8fc9'
-            '5257159e20a5fcb102a3b3ee6de33882a9e132e7f1d4345b8730effdd0240bb6'
-            '763cd8e7d5b4a5c24f7a82f24c64ec5503ea5c81dfb42fa74150136c0ca066fd'
-            'cba63c224af57d6b9432bb5f507121148d02b313c5f87c55504f49632a3a6062'
-            '1ca5a951775a3fbdb524d734ee27d5076d95d4bb35532923eecbfa5318ef3402'
+            '0556859a8168c8f7da9af8e2059d33216d9e5378d2cac70ca54c5ff843fa5add'
+            '95745075edd597caa92b369cfbcd11a04c9e3c88c0c987c70114924e1e01df5c'
+            '78dde51123a21ec5efe9c420b309d03263001dafd8684f71c167f02e3f504f9e'
             '98202b8ad70d02d86603294bae967874fa7b18704b5c7b867568b0fd33a08921'
             '5cbbf3db9ea3205e9b89fe3049bea6dd626181db0cb0dc461e4cf5a400c68dd6'
             'c7dbec875d0c1d6782c037a1dcefff2e5bdb5fc9dffac1beea07dd8c1bdef1d7'
             '77746aea71ffb06c685e7769b49c78e29af9b2e28209cd245e95d9cbb0dba3c9'
-            '7a2758f86dd1339f0f1801de2dbea059b55bf3648e240878b11e6d6890d3089c'
-            '0556859a8168c8f7da9af8e2059d33216d9e5378d2cac70ca54c5ff843fa5add'
-            '715ee8cae71db82f31c486cc0a946a7e9f9eb8d7c69d8bb5c64c35400affef3c'
-            'fa57b3d150ec741870fd67633b83084bb9947ed1efb11229217e0a4fd3d5669d'
             'f93707e75ec6be5f289605f913e59d4f3514524a1aab3368f49bf6789723d443'
+            '7a2758f86dd1339f0f1801de2dbea059b55bf3648e240878b11e6d6890d3089c'
+            '7d2af76b8dae73946379b967a493b927d76a68bb524b275b7c445bab90995687'
+            '1d58ef2991c625f6f0eb33b4cb8303932f53f1c4694e42bae24c9cd36d2ad013'
+            '427fd41ac742110d413f01daba66d5cd023b8e63fdc63242fcc96f589e66867f'
             'a504f6cf84094e08eaa3cc5b28440261797bf4f06f04993ee46a20628ff2b53c'
             'e096b127a5208f56d368d2cb938933454d7200d70c86b763aa22c38e0ddb8717'
             '8c1c880f2caa9c7ae43281a35410203887ea8eae750fe8d360d0c8bf80fcc6e0'
@@ -126,60 +113,58 @@ prepare() {
   # enable only if you have "gen-stable-queue-patch.sh" executed before
   #patch -Np1 -i "${srcdir}/prepatch-${_basekernel}.patch"
 
-  msg "disable USER_NS for non-root users"
-  patch -Np1 -i ../0001-ZEN-Add-sysctl-and-CONFIG-to-disallow-unprivileged-CLONE_NEWUSER.patch
+  # disable USER_NS for non-root users by default
+  msg2 "PATCH: 0001-ZEN-Add-sysctl-and-CONFIG-to-disallow-unprivileged-CLONE_NEWUSER"
+  patch -Np1 -i "${srcdir}/0001-ZEN-Add-sysctl-and-CONFIG-to-disallow-unprivileged-CLONE_NEWUSER.patch"
 
-  # fix dell xps 13 2-in-1 issue
-  # https://lkml.org/lkml/2019/10/16/1230
-  #patch -Np1 -i '../0002-lib-devres-add-a-helper-function-for-ioremap_uc.patch'
-  #patch -Np1 -i '../0003-mfd-intel-lpss-use-devm_ioremap_uc-for-MMIO.patch'
+  # other fixes by Arch
 
-  msg "ath9k revert patch"
-  # https://forum.manjaro.org/t/testing-update-2020-06-26-kernels-mesa-20-1-2-haskell/150212/22
-  patch -Rp1 -i "${srcdir}/$pkgname-ath9k-fix-general-protection-fault-in-ath9k_hif_usb_rx_cb.patch"
+  # add patches for snapd
+  # https://gitlab.com/apparmor/apparmor-kernel/tree/5.2-outoftree
+  msg "add patches for snapd"
+  msg2 "0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules"
+  patch -Np1 -i "${srcdir}/0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch"
+  msg2 "0002-apparmor-af_unix-mediation"
+  patch -Np1 -i "${srcdir}/0002-apparmor-af_unix-mediation.patch"
+  msg2 "0003-apparmor-fix-use-after-free-in-sk_peer_label"
+  patch -Np1 -i "${srcdir}/0003-apparmor-fix-use-after-free-in-sk_peer_label.patch"
+  msg2 "0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets"
+  patch -Np1 -i "${srcdir}/0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch"
 
   msg "nuvoton hwmon driver patch"
   # https://twitter.com/vskye11/status/1216240051639791616
   patch -Np1 -i '../0001-i2c-nuvoton-nc677x-hwmon-driver.patch'
-  
-  msg "packport nvme hwmon"
-  # backport NVME HWMON
-  patch -Np1 -i '../add-nvme-hwmon-temp.patch'
 
-  # drm-i915 backports by Ubuntu
-  #patch -Np1 -i '../0001-drm-i915-ubuntu-5.4.18-focal-2020-02-06.patch'
-  
-  msg "restore Killer-Qu-CO-NICs support"
-  patch -Np1 -i '../0006-iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch'
-  msg "drm-i915 patches"
-  patch -Np1 -i '../0007-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
-  patch -Np1 -i '../0008-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
-  patch -Np1 -i '../0009-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch'
-  patch -Np1 -i '../0010-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
-  msg "drm amdgpu patch"
-  patch -Np1 -i '../0014-drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
+  # Lenovo + AMD
+  msg "Lenovo + AMD"
 
-  # https://bbs.archlinux.org/viewtopic.php?pid=1883376#p1883376
-  # https://gitlab.manjaro.org/packages/core/linux54/issues/5
-  # No patch yet found ...
-
-  msg "snapd patches"
-  # https://gitlab.com/apparmor/apparmor-kernel/tree/5.2-outoftree
-  patch -Np1 -i "${srcdir}/0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch"
-  patch -Np1 -i "${srcdir}/0002-apparmor-af_unix-mediation.patch"
-  patch -Np1 -i "${srcdir}/0003-apparmor-fix-use-after-free-in-sk_peer_label.patch"
-  patch -Np1 -i "${srcdir}/0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch"
-
-  msg "navi10-vfio reset patch"
+  msg2 "navi10-vfio reset patch"
   # TODO: remove when AMD properly fixes it!
   # INFO: this is a hack and won't be upstreamed
   # https://forum.level1techs.com/t/145666/86
   # https://forum.manjaro.org/t/107820/11
   patch -Np1 -i "${srcdir}/0001-nonupstream-navi10-vfio-reset.patch"
-  
-  msg "handling of multiple fans on Lenovo P50"
+
+  msg2 "0001-lenovo-wmi1"
+  patch -Np1 -i '../0001-lenovo-wmi1.patch'
+  msg2 "0001-lenovo-wmi2"
+  patch -Np1 -i '../0001-lenovo-wmi2.patch'
+  msg2 "0002-pinctrl-amd"
+  patch -Np1 -i '../0002-pinctrl-amd.patch'
+
+  # handling of multiple fans on Lenovo P50
   # https://github.com/vmatare/thinkfan/issues/58
+  msg "handling of multiple fans on Lenovo P50"
+  msg2 "PATCH: Thinkpad dual fan control"
   patch -Np1 -i "${srcdir}/0005-thinkpad_acpi_dual_fan_control.patch"
+
+  # https://bugzilla.kernel.org/show_bug.cgi?id=207585
+  msg "handling of multiple fans on Lenovo P50"
+  patch -Np1 -i "${srcdir}/0001-iomap-iomap_bmap-should-accept-unwritten-maps.patch"
+
+  # futex patch, https://lore.kernel.org/lkml/20200612185122.327860-1-andrealmeid@collabora.com/
+  msg2 "0001-futex.patch"
+  patch -Np1 -i "${srcdir}/0001-futex.patch"
     
   msg "bootsplash patches"
   # http://lkml.iu.edu/hypermail/linux/kernel/1710.3/01542.html
