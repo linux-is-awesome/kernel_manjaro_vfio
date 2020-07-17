@@ -13,7 +13,7 @@ _basekernel=5.4
 _basever=54
 _aufs=20200518
 pkgver=5.4.52
-pkgrel=1
+pkgrel=2
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
 license=('GPL2')
@@ -49,6 +49,13 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0001-lenovo-wmi1.patch'
         '0001-lenovo-wmi2.patch'
         '0002-pinctrl-amd.patch'
+        # other patches
+        'iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch'
+        '0001-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
+        '0002-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
+        '0003-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch'
+        '0004-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
+        'drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
         # Bootsplash
         '0001-bootsplash.patch'
         '0002-bootsplash.patch'
@@ -89,6 +96,12 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '7d2af76b8dae73946379b967a493b927d76a68bb524b275b7c445bab90995687'
             '1d58ef2991c625f6f0eb33b4cb8303932f53f1c4694e42bae24c9cd36d2ad013'
             '427fd41ac742110d413f01daba66d5cd023b8e63fdc63242fcc96f589e66867f'
+            'fcb9e515bf0816db05446fd8ced7468756bea3cf01b060504bace41b2e7f5f74'
+            'e2084feabc3abeed37579ff515c367014356a652b85794b1612fea4daabe85d3'
+            '988ffbb96d85564a9d96145e5973339a8f78ae95d919efb2ee7bb50f7a8e8fc9'
+            '5257159e20a5fcb102a3b3ee6de33882a9e132e7f1d4345b8730effdd0240bb6'
+            '763cd8e7d5b4a5c24f7a82f24c64ec5503ea5c81dfb42fa74150136c0ca066fd'
+            'cba63c224af57d6b9432bb5f507121148d02b313c5f87c55504f49632a3a6062'
             'a504f6cf84094e08eaa3cc5b28440261797bf4f06f04993ee46a20628ff2b53c'
             'e096b127a5208f56d368d2cb938933454d7200d70c86b763aa22c38e0ddb8717'
             '8c1c880f2caa9c7ae43281a35410203887ea8eae750fe8d360d0c8bf80fcc6e0'
@@ -165,7 +178,15 @@ prepare() {
   # futex patch, https://lore.kernel.org/lkml/20200612185122.327860-1-andrealmeid@collabora.com/
   msg2 "0001-futex.patch"
   patch -Np1 -i "${srcdir}/0001-futex.patch"
-    
+  
+  # other patches
+  patch -Np1 -i "${srcdir}/iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch"
+  patch -Np1 -i "${srcdir}/0001-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch"
+  patch -Np1 -i "${srcdir}/0002-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch"
+  patch -Np1 -i "${srcdir}/0003-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch"
+  patch -Np1 -i "${srcdir}/0004-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch"
+  patch -Np1 -i "${srcdir}/drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch"
+  
   msg "bootsplash patches"
   # http://lkml.iu.edu/hypermail/linux/kernel/1710.3/01542.html
   patch -Np1 -i "${srcdir}/0001-bootsplash.patch"
