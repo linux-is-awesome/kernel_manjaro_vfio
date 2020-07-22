@@ -1,10 +1,12 @@
-# Based on the file created for Arch Linux by:
+# Maintainer: Philip Müller <philm[at]manjaro[dot]org>
+# Maintainer: Helmut Stult <helmut[at]manjaro[dot]org>
+
+# Arch credits:
 # Tobias Powalowski <tpowa@archlinux.org>
 # Thomas Baechler <thomas@archlinux.org>
 
-# Maintainer: Philip Müller (x86_64) <philm@manjaro.org>
-# Maintainer: Jonathon Fernyhough (i686) <jonathon@manjaro.org>
-# Contributor: Helmut Stult <helmut[at]manjaro[dot]org>
+# Cloud Server
+_server=cpx51
 
 pkgbase=linux54
 pkgname=('linux54' 'linux54-headers')
@@ -12,9 +14,9 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20200518
-pkgver=5.4.52
-pkgrel=2
-arch=('i686' 'x86_64')
+pkgver=5.4.53
+pkgrel=1
+arch=('x86_64')
 url="http://www.kernel.org/"
 license=('GPL2')
 makedepends=('xmlto' 'docbook-xsl' 'kmod' 'inetutils' 'bc' 'elfutils' 'git')
@@ -22,7 +24,7 @@ options=('!strip')
 source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.xz"
         "https://www.kernel.org/pub/linux/kernel/v5.x/patch-${pkgver}.xz"
         # the main kernel config files
-        'config.x86_64' 'config' 'config.aufs'
+        'config' 'config.aufs'
         # AUFS Patches
         "aufs5.4-${_aufs}.patch"
         'aufs5-base.patch'
@@ -71,9 +73,8 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            '558b3447ea7dcc37d2e44197ca8556ffa4430ca79599c9c127707ad8b1547e5f'
-            '2cecd5e20dc71b0392cc57be3666f1427c89cf576181a83b872e1674974a0db6'
-            'bfe52746bfc04114627b6f1e0dd94bc05dd94abe8f6dbee770f78d6116e315e8'
+            '14952cda6bc15bc7b9d99f28310b5b390c6280d43a841d6806cc4abaf5d17d06'
+            '6cff5c9fe790bfd5a16d6932cdebecb68282c50e2358cd0a0e8bd5b0f7017c57'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
             '45f8be50e74631259c1cf16e1624a84ba2bc9ab6af833ef730a6ac3ed529dc79'
             '37a173a427709223d39db14d53999c751f7b845a12a9d73afc65868f7d3a50ed'
@@ -214,11 +215,7 @@ prepare() {
   patch -Np1 -i "${srcdir}/tmpfs-idr.patch"
   patch -Np1 -i "${srcdir}/vfs-ino.patch"
 
-  if [ "${CARCH}" = "x86_64" ]; then
-    cat "${srcdir}/config.x86_64" > ./.config
-  else
-    cat "${srcdir}/config" > ./.config
-  fi
+  cat "${srcdir}/config" > ./.config
 
   cat "${srcdir}/config.aufs" >> ./.config
 
@@ -284,11 +281,7 @@ package_linux54() {
   echo "${_basekernel}-${CARCH}" | install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_kernver}/kernelbase"
 
   # add kernel version
-  if [ "${CARCH}" = "x86_64" ]; then
-     echo "${pkgver}-${pkgrel}-MANJARO x64" > "${pkgdir}/boot/${pkgbase}-${CARCH}.kver"
-  else
-     echo "${pkgver}-${pkgrel}-MANJARO x32" > "${pkgdir}/boot/${pkgbase}-${CARCH}.kver"
-  fi
+  echo "${pkgver}-${pkgrel}-MANJARO x64" > "${pkgdir}/boot/${pkgbase}-${CARCH}.kver"
 
   # make room for external modules
   local _extramodules="extramodules-${_basekernel}${_kernelname:--MANJARO}"
@@ -326,10 +319,6 @@ package_linux54-headers() {
   install -Dt "${_builddir}/arch/${KARCH}/kernel" -m644 "arch/${KARCH}/kernel/asm-offsets.s"
   #install -Dt "${_builddir}/arch/${KARCH}/kernel" -m644 "arch/${KARCH}/kernel/macros.s"
 
-  if [ "${CARCH}" = "i686" ]; then
-    install -Dt "${_builddir}/arch/${KARCH}" -m644 "arch/${KARCH}/Makefile_32.cpu"
-  fi
-
   cp -t "${_builddir}/arch/${KARCH}" -a "arch/${KARCH}/include"
 
   install -Dt "${_builddir}/drivers/md" -m644 drivers/md/*.h
@@ -349,10 +338,8 @@ package_linux54-headers() {
   # copy in Kconfig files
   find . -name Kconfig\* -exec install -Dm644 {} "${_builddir}/{}" \;
 
-  if [ "${CARCH}" = "x86_64" ]; then
-    # add objtool for external module building and enabled VALIDATION_STACK option
-    install -Dt "${_builddir}/tools/objtool" tools/objtool/objtool
-  fi
+  # add objtool for external module building and enabled VALIDATION_STACK option
+  install -Dt "${_builddir}/tools/objtool" tools/objtool/objtool
 
   # remove unneeded architectures
   local _arch
@@ -379,5 +366,3 @@ package_linux54-headers() {
     /usr/bin/strip ${_strip} "${_binary}"
   done < <(find "${_builddir}/scripts" -type f -perm -u+w -print0 2>/dev/null)
 }
-
-_server=cpx51
