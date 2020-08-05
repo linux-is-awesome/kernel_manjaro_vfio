@@ -1,4 +1,5 @@
 # Maintainer: Philip Müller <philm[at]manjaro[dot]org>
+# Maintainer: Bernhard Landauer <bernhard[at]manjaro[dot]org>
 # Maintainer: Helmut Stult <helmut[at]manjaro[dot]org>
 
 # Arch credits:
@@ -13,8 +14,8 @@ pkgname=('linux54' 'linux54-headers')
 _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
-_aufs=20200518
-pkgver=5.4.55
+_aufs=20200622
+pkgver=5.4.56
 pkgrel=1
 arch=('x86_64')
 url="http://www.kernel.org/"
@@ -73,15 +74,15 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            'eeda15b0732feeed0266d7d09031f0425a44436b2ea367363ca958317d9f8a51'
+            '19da76371d4a32b1eae76d43dc9d89638e42400767e0ed526c25cd131895c20c'
             '6cff5c9fe790bfd5a16d6932cdebecb68282c50e2358cd0a0e8bd5b0f7017c57'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
-            '45f8be50e74631259c1cf16e1624a84ba2bc9ab6af833ef730a6ac3ed529dc79'
-            '37a173a427709223d39db14d53999c751f7b845a12a9d73afc65868f7d3a50ed'
-            '5e75a6227bcc67d1d22ab84f897d9b48b600c59530290988f6caa937f08f5c93'
-            '7ca0dab13cb6c8677d55221579f9a62c86df4d7b1761698eb69994e62015d835'
-            'f9d2170bc244ba96439fbce21bb6fc8d64e077fcc65bc7d24f89bf53c5e44279'
-            'de0a9618ce4f697cb66781ce495a37895a23695835843d15c65449678a52e537'
+            '2839e2f75cb3692af3bbf6d4b10522f1652830a1105ba5cf459e11f281348d3e'
+            '1482e06a3fcfdb483171caf0dc1ddff873671399b8e9966ec83f3a00269c345b'
+            'b7313d393e1909bbc245c5b565bd88f84b6238aa92c9db477c1bb83d7fb3fb72'
+            '78a33d70be642cd1388ff3cd049c5c6980692f2ba1cd1d25fa00e74c9510e474'
+            '32b4847bfb1b4afa82b20b628c64dcbcd2d5dcfbce22387ae8830c8828bccd24'
+            '36d8c60d8210e8807a452da27fa9b6fbbb02cfff6b0eec67a51b95ef5e82ba69'
             '101ac92871078a1e72320cd0d7432e0a44e28c50864b2cd46ae57a026e021387'
             '9087b14760b203fe6939baccbb7d59ccf256e71f20b5355326702bc890de4ed8'
             '7685d526bbdbfa795986591a70071c960ff572f56d3501774861728a9df8664c'
