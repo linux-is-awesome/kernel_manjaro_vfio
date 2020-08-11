@@ -32,6 +32,9 @@ cd ..
 rm -Rf tmp
 rm -Rf aufs5-standalone
 
+# delete unnecessary patch files
+rm lockdep-debug.patch
+rm proc_mounts.patch
 
 # the patch is created in ../tmp
 # the other patches needed to compile are in the base directory
