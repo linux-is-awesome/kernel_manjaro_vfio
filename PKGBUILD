@@ -225,9 +225,6 @@ prepare() {
     sed -i "s|CONFIG_LOCALVERSION_AUTO=.*|CONFIG_LOCALVERSION_AUTO=n|" ./.config
   fi
 
-  msg "set patchlevel to 4"
-  sed -ri "s|^(PATCHLEVEL =).*|\1 4|" Makefile
-
   msg "set extraversion to pkgrel"
   sed -ri "s|^(EXTRAVERSION =).*|\1 -${pkgrel}|" Makefile
 
