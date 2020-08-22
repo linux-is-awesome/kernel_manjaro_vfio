@@ -124,10 +124,6 @@ prepare() {
   msg "add upstream patch"
   patch -p1 -i "${srcdir}/patch-${pkgver}"
 
-  # add upstream patch
-  msg "add upstream patch"
-  patch -p1 -i "${srcdir}/patch-${pkgver}"
-
   local src
   for src in "${source[@]}"; do
       src="${src%%::*}"
