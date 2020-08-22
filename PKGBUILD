@@ -121,100 +121,24 @@ prepare() {
   cd "${srcdir}/linux-${_basekernel}"
 
   # add upstream patch
+  msg "add upstream patch"
   patch -p1 -i "${srcdir}/patch-${pkgver}"
 
-  # add latest fixes from stable queue, if needed
-  # http://git.kernel.org/?p=linux/kernel/git/stable/stable-queue.git
-  # enable only if you have "gen-stable-queue-patch.sh" executed before
-  #patch -Np1 -i "${srcdir}/prepatch-${_basekernel}.patch"
+  # add upstream patch
+  msg "add upstream patch"
+  patch -p1 -i "${srcdir}/patch-${pkgver}"
 
-  # disable USER_NS for non-root users by default
-  msg2 "PATCH: 0001-ZEN-Add-sysctl-and-CONFIG-to-disallow-unprivileged-CLONE_NEWUSER"
-  patch -Np1 -i "${srcdir}/0001-ZEN-Add-sysctl-and-CONFIG-to-disallow-unprivileged-CLONE_NEWUSER.patch"
+  local src
+  for src in "${source[@]}"; do
+      src="${src%%::*}"
+      src="${src##*/}"
+      [[ $src = *.patch ]] || continue
+      msg2 "Applying patch: $src..."
+      patch -Np1 < "../$src"
+  done
 
-  # other fixes by Arch
-
-  # add patches for snapd
-  # https://gitlab.com/apparmor/apparmor-kernel/tree/5.2-outoftree
-  msg "add patches for snapd"
-  msg2 "0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules"
-  patch -Np1 -i "${srcdir}/0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch"
-  msg2 "0002-apparmor-af_unix-mediation"
-  patch -Np1 -i "${srcdir}/0002-apparmor-af_unix-mediation.patch"
-  msg2 "0003-apparmor-fix-use-after-free-in-sk_peer_label"
-  patch -Np1 -i "${srcdir}/0003-apparmor-fix-use-after-free-in-sk_peer_label.patch"
-  msg2 "0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets"
-  patch -Np1 -i "${srcdir}/0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch"
-
-  msg "nuvoton hwmon driver patch"
-  # https://twitter.com/vskye11/status/1216240051639791616
-  patch -Np1 -i '../0001-i2c-nuvoton-nc677x-hwmon-driver.patch'
-
-  # Lenovo + AMD
-  msg "Lenovo + AMD"
-
-  msg2 "navi10-vfio reset patch"
-  # TODO: remove when AMD properly fixes it!
-  # INFO: this is a hack and won't be upstreamed
-  # https://forum.level1techs.com/t/145666/86
-  # https://forum.manjaro.org/t/107820/11
-  patch -Np1 -i "${srcdir}/0001-nonupstream-navi10-vfio-reset.patch"
-
-  msg2 "0001-lenovo-wmi1"
-  patch -Np1 -i '../0001-lenovo-wmi1.patch'
-  msg2 "0001-lenovo-wmi2"
-  patch -Np1 -i '../0001-lenovo-wmi2.patch'
-  msg2 "0002-pinctrl-amd"
-  patch -Np1 -i '../0002-pinctrl-amd.patch'
-
-  # handling of multiple fans on Lenovo P50
-  # https://github.com/vmatare/thinkfan/issues/58
-  msg "handling of multiple fans on Lenovo P50"
-  msg2 "PATCH: Thinkpad dual fan control"
-  patch -Np1 -i "${srcdir}/0005-thinkpad_acpi_dual_fan_control.patch"
-
-  # https://bugzilla.kernel.org/show_bug.cgi?id=207585
-  msg "handling of multiple fans on Lenovo P50"
-  patch -Np1 -i "${srcdir}/0001-iomap-iomap_bmap-should-accept-unwritten-maps.patch"
-
-  # futex patch, https://lore.kernel.org/lkml/20200612185122.327860-1-andrealmeid@collabora.com/
-  msg2 "0001-futex.patch"
-  patch -Np1 -i "${srcdir}/0001-futex.patch"
-  
-  # other patches
-  patch -Np1 -i "${srcdir}/iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch"
-  patch -Np1 -i "${srcdir}/0001-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch"
-  patch -Np1 -i "${srcdir}/0002-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch"
-  patch -Np1 -i "${srcdir}/0003-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch"
-  patch -Np1 -i "${srcdir}/0004-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch"
-  patch -Np1 -i "${srcdir}/drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch"
-  
-  msg "bootsplash patches"
-  # http://lkml.iu.edu/hypermail/linux/kernel/1710.3/01542.html
-  patch -Np1 -i "${srcdir}/0001-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0002-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0003-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0004-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0005-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0006-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0007-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0008-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0009-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0010-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0011-bootsplash.patch"
-  patch -Np1 -i "${srcdir}/0012-bootsplash.patch"
-  # use git-apply to add binary files
-  git apply -p1 < "${srcdir}/0013-bootsplash.patch"
-
-  msg "add aufs5 support"
-  patch -Np1 -i "${srcdir}/aufs5.4-${_aufs}.patch"
-  patch -Np1 -i "${srcdir}/aufs5-base.patch"
-  patch -Np1 -i "${srcdir}/aufs5-kbuild.patch"
-  patch -Np1 -i "${srcdir}/aufs5-loopback.patch"
-  patch -Np1 -i "${srcdir}/aufs5-mmap.patch"
-  patch -Np1 -i "${srcdir}/aufs5-standalone.patch"
-  patch -Np1 -i "${srcdir}/tmpfs-idr.patch"
-  patch -Np1 -i "${srcdir}/vfs-ino.patch"
+  msg2 "0013-bootsplash"
+  git apply -p1 < "${srcdir}/0013-bootsplash.gitpatch"
 
   cat "${srcdir}/config" > ./.config
 
