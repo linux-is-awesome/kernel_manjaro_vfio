@@ -15,7 +15,7 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20200622
-pkgver=5.4.63
+pkgver=5.4.64
 pkgrel=1
 arch=('x86_64')
 url="http://www.kernel.org/"
@@ -74,7 +74,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.gitpatch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            '477fe9fb16e89321447978734c80f9a52cd05d018a2538ad77d3d0a2be36b821'
+            '01ceb94f15a8e1877cc10b85179f2f1e6fafdede793c53e8a0b75771e9769a53'
             'f4c8556e78af140231f3ac16017bb7548bf6f2f475b5b109bb7c058a5dd06b67'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
             '55abda03e3e33075e5f3c0870829af3a0cd25536fcba0f58ae9de73d2d2172d1'
