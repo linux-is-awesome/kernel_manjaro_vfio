@@ -15,7 +15,7 @@ _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
 _aufs=20200622
-pkgver=5.4.65
+pkgver=5.4.66
 pkgrel=1
 arch=('x86_64')
 url="http://www.kernel.org/"
@@ -60,6 +60,8 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0004-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
         'drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
         # Bootsplash
+        '0001-revert-fbcon-remove-now-unusued-softback_lines-cursor-argument.patch'
+        '0002-revert-fbcon-remove-soft-scrollback-code.patch'
         '0001-bootsplash.patch'
         '0002-bootsplash.patch'
         '0003-bootsplash.patch'
@@ -74,7 +76,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0012-bootsplash.patch'
         '0013-bootsplash.gitpatch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            '64f43fe62c7cc601d65833680613ff483309e38a9ea7831d7895c8577add8312'
+            'fd9444a5b5b5f10cbe1dc2d236f6fc3552a807905d4bb44cf4806ebadf90697d'
             'f4c8556e78af140231f3ac16017bb7548bf6f2f475b5b109bb7c058a5dd06b67'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
             '55abda03e3e33075e5f3c0870829af3a0cd25536fcba0f58ae9de73d2d2172d1'
@@ -104,6 +106,8 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '5257159e20a5fcb102a3b3ee6de33882a9e132e7f1d4345b8730effdd0240bb6'
             '763cd8e7d5b4a5c24f7a82f24c64ec5503ea5c81dfb42fa74150136c0ca066fd'
             'cba63c224af57d6b9432bb5f507121148d02b313c5f87c55504f49632a3a6062'
+            'ddf1e7fc55cc6fe81ecfcac84112e573ca95713c027bc84d69cf880812fd6ff3'
+            '37a221c12b40122167b0a30b5a9f2fc99e2aeb94e4db58a719c2b30171c5aeb5'
             'a504f6cf84094e08eaa3cc5b28440261797bf4f06f04993ee46a20628ff2b53c'
             'e096b127a5208f56d368d2cb938933454d7200d70c86b763aa22c38e0ddb8717'
             '8c1c880f2caa9c7ae43281a35410203887ea8eae750fe8d360d0c8bf80fcc6e0'
