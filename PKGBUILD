@@ -20,7 +20,13 @@ pkgrel=2
 arch=('x86_64')
 url="http://www.kernel.org/"
 license=('GPL2')
-makedepends=('xmlto' 'docbook-xsl' 'kmod' 'inetutils' 'bc' 'elfutils' 'git')
+makedepends=('bc'
+    'docbook-xsl'
+    'elfutils'
+    'git'
+    'inetutils'
+    'kmod'
+    'xmlto')
 options=('!strip')
 source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.xz"
         "https://www.kernel.org/pub/linux/kernel/v5.x/patch-${pkgver}.xz"
@@ -38,43 +44,43 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         # ARCH Patches
         '0001-ZEN-Add-sysctl-and-CONFIG-to-disallow-unprivileged-CLONE_NEWUSER.patch'
         # MANJARO Patches
-        '0001-i2c-nuvoton-nc677x-hwmon-driver.patch'
-        '0001-iomap-iomap_bmap-should-accept-unwritten-maps.patch'
-        '0001-futex.patch'
-        '0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch'
-        '0002-apparmor-af_unix-mediation.patch'
-        '0003-apparmor-fix-use-after-free-in-sk_peer_label.patch'
-        '0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch'
+        '0101-i2c-nuvoton-nc677x-hwmon-driver.patch'
+        '0102-iomap-iomap_bmap-should-accept-unwritten-maps.patch'
+        '0103-futex.patch'
+        '0201-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch'
+        '0202-apparmor-af_unix-mediation.patch'
+        '0203-apparmor-fix-use-after-free-in-sk_peer_label.patch'
+        '0204-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch'
         # Lenovo P50 multiple fans
         '0005-thinkpad_acpi_dual_fan_control.patch::https://github.com/dvhart/linux-pdx86/commit/26c16f9d956f269bbc32e034e3ec11c4831137de.patch'
          # Lenovo + AMD
-        '0001-nonupstream-navi10-vfio-reset.patch'
-        '0001-lenovo-wmi1.patch'
-        '0001-lenovo-wmi2.patch'
-        '0002-pinctrl-amd.patch'
+        '0301-nonupstream-navi10-vfio-reset.patch'
+        '0302-lenovo-wmi1.patch'
+        '0302-lenovo-wmi2.patch'
+        '0303-pinctrl-amd.patch'
         # other patches
-        'iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch'
-        '0001-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
-        '0002-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
-        '0003-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch'
-        '0004-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
+        '0601-drm-i915-save-AUD_FREQ_CNTRL-state-at-audio-domain-suspend.patch'
+        '0602-drm-i915-Fix-audio-power-up-sequence-for-gen10-display.patch'
+        '0603-drm-i915-extend-audio-CDCLK-2-BCLK-constraint-to-more-platforms.patch'
+        '0604-drm-i915-limit-audio-CDCLK-constraint-back-to-GLK-only.patch'
         'drm-amdgpu-add-dc-feature-mask-to-disable-fractional-pwm.patch'
+        'iwlwifi-pcie-restore-support-for-Killer-Qu-C0-NICs.patch'
         # Bootsplash
-        '0001-revert-fbcon-remove-now-unusued-softback_lines-cursor-argument.patch'
-        '0002-revert-fbcon-remove-soft-scrollback-code.patch'
-        '0001-bootsplash.patch'
-        '0002-bootsplash.patch'
-        '0003-bootsplash.patch'
-        '0004-bootsplash.patch'
-        '0005-bootsplash.patch'
-        '0006-bootsplash.patch'
-        '0007-bootsplash.patch'
-        '0008-bootsplash.patch'
-        '0009-bootsplash.patch'
-        '0010-bootsplash.patch'
-        '0011-bootsplash.patch'
-        '0012-bootsplash.patch'
-        '0013-bootsplash.gitpatch')
+        '0401-revert-fbcon-remove-now-unusued-softback_lines-cursor-argument.patch'
+        '0402-revert-fbcon-remove-soft-scrollback-code.patch'
+        '0501-bootsplash.patch'
+        '0502-bootsplash.patch'
+        '0503-bootsplash.patch'
+        '0504-bootsplash.patch'
+        '0505-bootsplash.patch'
+        '0506-bootsplash.patch'
+        '0507-bootsplash.patch'
+        '0508-bootsplash.patch'
+        '0509-bootsplash.patch'
+        '0510-bootsplash.patch'
+        '0511-bootsplash.patch'
+        '0512-bootsplash.patch'
+        '0513-bootsplash.gitpatch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             'fd9444a5b5b5f10cbe1dc2d236f6fc3552a807905d4bb44cf4806ebadf90697d'
             'aa90e7bc321052b1fa97fbed40600738727504b67f674f4fbc4f7a68222509e7'
@@ -100,12 +106,12 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '7d2af76b8dae73946379b967a493b927d76a68bb524b275b7c445bab90995687'
             '1d58ef2991c625f6f0eb33b4cb8303932f53f1c4694e42bae24c9cd36d2ad013'
             '427fd41ac742110d413f01daba66d5cd023b8e63fdc63242fcc96f589e66867f'
-            'fcb9e515bf0816db05446fd8ced7468756bea3cf01b060504bace41b2e7f5f74'
             'e2084feabc3abeed37579ff515c367014356a652b85794b1612fea4daabe85d3'
             '988ffbb96d85564a9d96145e5973339a8f78ae95d919efb2ee7bb50f7a8e8fc9'
             '5257159e20a5fcb102a3b3ee6de33882a9e132e7f1d4345b8730effdd0240bb6'
             '763cd8e7d5b4a5c24f7a82f24c64ec5503ea5c81dfb42fa74150136c0ca066fd'
             'cba63c224af57d6b9432bb5f507121148d02b313c5f87c55504f49632a3a6062'
+            'fcb9e515bf0816db05446fd8ced7468756bea3cf01b060504bace41b2e7f5f74'
             'ddf1e7fc55cc6fe81ecfcac84112e573ca95713c027bc84d69cf880812fd6ff3'
             '37a221c12b40122167b0a30b5a9f2fc99e2aeb94e4db58a719c2b30171c5aeb5'
             'a504f6cf84094e08eaa3cc5b28440261797bf4f06f04993ee46a20628ff2b53c'
@@ -137,9 +143,10 @@ prepare() {
       patch -Np1 < "../$src"
   done
 
-  msg2 "0013-bootsplash"
-  git apply -p1 < "${srcdir}/0013-bootsplash.gitpatch"
+  msg2 "0513-bootsplash"
+  git apply -p1 < "${srcdir}/0513-bootsplash.gitpatch"
 
+  msg2 "add config.aufs to config"
   cat "${srcdir}/config" > ./.config
 
   cat "${srcdir}/config.aufs" >> ./.config
