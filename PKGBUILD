@@ -16,7 +16,7 @@ _basekernel=5.4
 _basever=54
 _aufs=20200622
 pkgver=5.4.68
-pkgrel=1
+pkgrel=2
 arch=('x86_64')
 url="http://www.kernel.org/"
 license=('GPL2')
@@ -54,7 +54,6 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         # Lenovo P50 multiple fans
         '0005-thinkpad_acpi_dual_fan_control.patch::https://github.com/dvhart/linux-pdx86/commit/26c16f9d956f269bbc32e034e3ec11c4831137de.patch'
          # Lenovo + AMD
-        '0301-nonupstream-navi10-vfio-reset.patch'
         '0302-lenovo-wmi1.patch'
         '0302-lenovo-wmi2.patch'
         '0303-pinctrl-amd.patch'
@@ -102,7 +101,6 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             'c7dbec875d0c1d6782c037a1dcefff2e5bdb5fc9dffac1beea07dd8c1bdef1d7'
             '77746aea71ffb06c685e7769b49c78e29af9b2e28209cd245e95d9cbb0dba3c9'
             'f93707e75ec6be5f289605f913e59d4f3514524a1aab3368f49bf6789723d443'
-            '7a2758f86dd1339f0f1801de2dbea059b55bf3648e240878b11e6d6890d3089c'
             '7d2af76b8dae73946379b967a493b927d76a68bb524b275b7c445bab90995687'
             '1d58ef2991c625f6f0eb33b4cb8303932f53f1c4694e42bae24c9cd36d2ad013'
             '427fd41ac742110d413f01daba66d5cd023b8e63fdc63242fcc96f589e66867f'
