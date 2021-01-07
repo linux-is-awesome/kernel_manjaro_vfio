@@ -9,9 +9,9 @@
 # Cloud Server
 _server=cpx51
 
-pkgbase=linux54
-pkgname=('linux54' 'linux54-headers')
-_kernelname=-MANJARO
+pkgbase=linux54-vfio
+pkgname=('linux54-vfio' 'linux54-vfio-headers')
+_kernelname=-MANJARO-VFIO
 _basekernel=5.4
 _basever=54
 _aufs=20200622
@@ -79,10 +79,18 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0510-bootsplash.patch'
         '0511-bootsplash.patch'
         '0512-bootsplash.patch'
-        '0513-bootsplash.gitpatch')
+        '0513-bootsplash.gitpatch'
+        # vfio patches
+        'add-acs-overrides.patch'
+        '0002-virt-vbox-Add-support-for-the-new-VBG_IOCTL_ACQUIRE_.patch'
+        'i915-vga-arbiter.patch'
+        'sphinx-workaround.patch'
+        # performance
+        '0002-clear-patches.patch'
+        'enable_additional_cpu_optimizations_for_gcc.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '203ac7aee6f196f8a3ae5e98b214baf79d0d7924477cf3b262b6bb6658d68f05'
-            '13cbf8fe8f4a8eb6786b9afec4ce17b03c056d9ff417963f5a670bf96d3b5d67'
+            'a2c25f86bf674282ecac164894df821cb8aed5dde277c593358112a1ce19ee92'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
             '55abda03e3e33075e5f3c0870829af3a0cd25536fcba0f58ae9de73d2d2172d1'
             '1482e06a3fcfdb483171caf0dc1ddff873671399b8e9966ec83f3a00269c345b'
@@ -124,7 +132,13 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             'e9f22cbb542591087d2d66dc6dc912b1434330ba3cd13d2df741d869a2c31e89'
             '27471eee564ca3149dd271b0817719b5565a9594dc4d884fe3dc51a5f03832bc'
             '60e295601e4fb33d9bf65f198c54c7eb07c0d1e91e2ad1e0dd6cd6e142cb266d'
-            '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef')
+            '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef'
+            '6ebc19f8cdd608a97f8fa6a0a815ac142b88e18dd476bc2851b2771e3aa9522d'
+            '4fd74bb2a7101d700fba91806141339d8c9e46a14f8fc1fe276cfb68f1eec0f5'
+            '50880279bab5793c89a6823d751d3c84ead5efd5c4c0d38b921a14061fc0d336'
+            'b7c814c8183e4645947a6dcc3cbf80431de8a8fd4e895b780f9a5fd92f82cb8e'
+            'd02bf5ca08fd610394b9d3a0c3b176d74af206f897dee826e5cbaec97bb4a4aa'
+            '27b7fc535ade94b636c3ec4e809e141831e9465a0ef55215a9852b87048629e2')
 prepare() {
   cd "${srcdir}/linux-${_basekernel}"
 
@@ -183,7 +197,7 @@ build() {
   make ${MAKEFLAGS} LOCALVERSION= bzImage modules
 }
 
-package_linux54() {
+package_linux54-vfio() {
   pkgdesc="The ${pkgbase/linux/Linux} kernel and modules"
   depends=('coreutils' 'linux-firmware' 'kmod' 'mkinitcpio>=27')
   optdepends=('crda: to set the correct wireless channels of your country')
@@ -205,10 +219,10 @@ package_linux54() {
 
   # Used by mkinitcpio to name the kernel
   echo "${pkgbase}" | install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_kernver}/pkgbase"
-  echo "${_basekernel}-${CARCH}" | install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_kernver}/kernelbase"
+  echo "${pkgbase}" | install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_kernver}/kernelbase"
 
   # add kernel version
-  echo "${pkgver}-${pkgrel}-MANJARO x64" > "${pkgdir}/boot/${pkgbase}-${CARCH}.kver"
+  echo "${pkgver}-${pkgrel}-MANJARO-VFIO x64" > "${pkgdir}/boot/${pkgbase}-${CARCH}.kver"
 
   # make room for external modules
   local _extramodules="extramodules-${_basekernel}${_kernelname:--MANJARO}"
@@ -228,7 +242,7 @@ package_linux54() {
   install -Dt "${pkgdir}/usr/lib/modules/${_kernver}/build" -m644 vmlinux
 }
 
-package_linux54-headers() {
+package_linux54-vfio-headers() {
   pkgdesc="Header files and scripts for building modules for ${pkgbase/linux/Linux} kernel"
   provides=("linux-headers=$pkgver")
 
