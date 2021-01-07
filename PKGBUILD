@@ -52,7 +52,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0203-apparmor-fix-use-after-free-in-sk_peer_label.patch'
         '0204-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch'
         # Lenovo P50 multiple fans
-        '0005-thinkpad_acpi_dual_fan_control.patch::https://github.com/dvhart/linux-pdx86/commit/26c16f9d956f269bbc32e034e3ec11c4831137de.patch'
+        '0005-thinkpad_acpi_dual_fan_control.patch'
          # Lenovo + AMD
         '0302-lenovo-wmi1.patch'
         '0302-lenovo-wmi2.patch'
