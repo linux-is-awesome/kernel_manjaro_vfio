@@ -1,0 +1,5 @@
+updpkgsums
+
+makepkg -s
+
+makepkg -i
