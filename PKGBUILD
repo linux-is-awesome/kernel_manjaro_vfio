@@ -90,7 +90,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         'enable_additional_cpu_optimizations_for_gcc.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             'e54d3d471824488dea2210303330b05d73f789021c90ccd2d3bc11069c7499df'
-            '5c1c50c6a75714b781c54f05c6c2f28c58bb320ac28951a16ed95781071c91f6'
+            '8417194c9e9864a81be2ef3440cd2fb9415bbd1f66fdeda6d396ed7354322de7'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
             '55abda03e3e33075e5f3c0870829af3a0cd25536fcba0f58ae9de73d2d2172d1'
             '1482e06a3fcfdb483171caf0dc1ddff873671399b8e9966ec83f3a00269c345b'
