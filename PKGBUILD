@@ -14,8 +14,7 @@ pkgname=('linux54-vfio' 'linux54-vfio-headers')
 _kernelname=-MANJARO-VFIO
 _basekernel=5.4
 _basever=54
-_aufs=20200622
-pkgver=5.4.92
+pkgver=5.4.94
 pkgrel=1
 arch=('x86_64')
 url="http://www.kernel.org/"
@@ -30,15 +29,11 @@ makedepends=('bc'
 options=('!strip')
 source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.xz"
         "https://www.kernel.org/pub/linux/kernel/v5.x/patch-${pkgver}.xz"
-        # the main kernel config files
-        'config' 'config.aufs'
-        # AUFS Patches
-        "aufs5.4-${_aufs}.patch"
-        'aufs5-base.patch'
-        'aufs5-kbuild.patch'
-        'aufs5-loopback.patch'
-        'aufs5-mmap.patch'
-        'aufs5-standalone.patch'
+        # the main kernel config file
+        'config'
+        # Canonical
+        'prepatch-5.4.patch'
+        # fs patches
         'tmpfs-idr.patch'
         'vfs-ino.patch'
         # ARCH Patches
@@ -89,15 +84,9 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0002-clear-patches.patch'
         'enable_additional_cpu_optimizations_for_gcc.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            '58c8a5b6a95ae32568f8ca693fcd9e1445cd3fe4592ba867628e068be09369f7'
-            '8417194c9e9864a81be2ef3440cd2fb9415bbd1f66fdeda6d396ed7354322de7'
-            'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
-            '55abda03e3e33075e5f3c0870829af3a0cd25536fcba0f58ae9de73d2d2172d1'
-            '1482e06a3fcfdb483171caf0dc1ddff873671399b8e9966ec83f3a00269c345b'
-            'b7313d393e1909bbc245c5b565bd88f84b6238aa92c9db477c1bb83d7fb3fb72'
-            '78a33d70be642cd1388ff3cd049c5c6980692f2ba1cd1d25fa00e74c9510e474'
-            '32b4847bfb1b4afa82b20b628c64dcbcd2d5dcfbce22387ae8830c8828bccd24'
-            '36d8c60d8210e8807a452da27fa9b6fbbb02cfff6b0eec67a51b95ef5e82ba69'
+            '40db6e83da28b8e4d048a5f71a7fe937d91cf4d8171dfd7466d4b663d034b6c5'
+            '62b1ee50c1fb1ead8c95c887846104eb315b322dd5307de9d7ad6e034d09b3b4'
+            '07735dc1dfa661f534b85554072f6f1f539a93b5588606f22f5c0818390af725'
             '101ac92871078a1e72320cd0d7432e0a44e28c50864b2cd46ae57a026e021387'
             '9087b14760b203fe6939baccbb7d59ccf256e71f20b5355326702bc890de4ed8'
             '7685d526bbdbfa795986591a70071c960ff572f56d3501774861728a9df8664c'
@@ -158,10 +147,8 @@ prepare() {
   msg2 "0513-bootsplash"
   git apply -p1 < "${srcdir}/0513-bootsplash.gitpatch"
 
-  msg2 "add config.aufs to config"
+  msg2 "copy config"
   cat "${srcdir}/config" > ./.config
-
-  cat "${srcdir}/config.aufs" >> ./.config
 
   if [ "${_kernelname}" != "" ]; then
     sed -i "s|CONFIG_LOCALVERSION=.*|CONFIG_LOCALVERSION=\"${_kernelname}\"|g" ./.config

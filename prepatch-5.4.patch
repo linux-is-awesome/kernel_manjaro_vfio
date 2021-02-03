@@ -1,0 +1,1241 @@
+
+From b59e286be280fa3c2e94a0716ddcee6ba02bc8ba Mon Sep 17 00:00:00 2001
+From: Hangbin Liu <liuhangbin@gmail.com>
+Date: Tue, 27 Oct 2020 20:33:12 +0800
+Subject: ICMPv6: Add ICMPv6 Parameter Problem, code 3 definition
+
+From: Hangbin Liu <liuhangbin@gmail.com>
+
+commit b59e286be280fa3c2e94a0716ddcee6ba02bc8ba upstream.
+
+Based on RFC7112, Section 6:
+
+   IANA has added the following "Type 4 - Parameter Problem" message to
+   the "Internet Control Message Protocol version 6 (ICMPv6) Parameters"
+   registry:
+
+      CODE     NAME/DESCRIPTION
+       3       IPv6 First Fragment has incomplete IPv6 Header Chain
+
+Signed-off-by: Hangbin Liu <liuhangbin@gmail.com>
+Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+Signed-off-by: Aviraj CJ <acj@cisco.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ include/uapi/linux/icmpv6.h |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/include/uapi/linux/icmpv6.h
++++ b/include/uapi/linux/icmpv6.h
+@@ -137,6 +137,7 @@ struct icmp6hdr {
+ #define ICMPV6_HDR_FIELD		0
+ #define ICMPV6_UNK_NEXTHDR		1
+ #define ICMPV6_UNK_OPTION		2
++#define ICMPV6_HDR_INCOMP		3
+ 
+ /*
+  *	constants for (set|get)sockopt
+From 2efdaaaf883a143061296467913c01aa1ff4b3ce Mon Sep 17 00:00:00 2001
+From: Hangbin Liu <liuhangbin@gmail.com>
+Date: Tue, 27 Oct 2020 20:33:13 +0800
+Subject: IPv6: reply ICMP error if the first fragment don't include all headers
+
+From: Hangbin Liu <liuhangbin@gmail.com>
+
+commit 2efdaaaf883a143061296467913c01aa1ff4b3ce upstream.
+
+Based on RFC 8200, Section 4.5 Fragment Header:
+
+  -  If the first fragment does not include all headers through an
+     Upper-Layer header, then that fragment should be discarded and
+     an ICMP Parameter Problem, Code 3, message should be sent to
+     the source of the fragment, with the Pointer field set to zero.
+
+Checking each packet header in IPv6 fast path will have performance impact,
+so I put the checking in ipv6_frag_rcv().
+
+As the packet may be any kind of L4 protocol, I only checked some common
+protocols' header length and handle others by (offset + 1) > skb->len.
+Also use !(frag_off & htons(IP6_OFFSET)) to catch atomic fragments
+(fragmented packet with only one fragment).
+
+When send ICMP error message, if the 1st truncated fragment is ICMP message,
+icmp6_send() will break as is_ineligible() return true. So I added a check
+in is_ineligible() to let fragment packet with nexthdr ICMP but no ICMP header
+return false.
+
+Signed-off-by: Hangbin Liu <liuhangbin@gmail.com>
+Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+Signed-off-by: Aviraj CJ <acj@cisco.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ net/ipv6/icmp.c       |    8 +++++++-
+ net/ipv6/reassembly.c |   33 ++++++++++++++++++++++++++++++++-
+ 2 files changed, 39 insertions(+), 2 deletions(-)
+
+--- a/net/ipv6/icmp.c
++++ b/net/ipv6/icmp.c
+@@ -158,7 +158,13 @@ static bool is_ineligible(const struct s
+ 		tp = skb_header_pointer(skb,
+ 			ptr+offsetof(struct icmp6hdr, icmp6_type),
+ 			sizeof(_type), &_type);
+-		if (!tp || !(*tp & ICMPV6_INFOMSG_MASK))
++
++		/* Based on RFC 8200, Section 4.5 Fragment Header, return
++		 * false if this is a fragment packet with no icmp header info.
++		 */
++		if (!tp && frag_off != 0)
++			return false;
++		else if (!tp || !(*tp & ICMPV6_INFOMSG_MASK))
+ 			return true;
+ 	}
+ 	return false;
+--- a/net/ipv6/reassembly.c
++++ b/net/ipv6/reassembly.c
+@@ -42,6 +42,8 @@
+ #include <linux/skbuff.h>
+ #include <linux/slab.h>
+ #include <linux/export.h>
++#include <linux/tcp.h>
++#include <linux/udp.h>
+ 
+ #include <net/sock.h>
+ #include <net/snmp.h>
+@@ -322,7 +324,9 @@ static int ipv6_frag_rcv(struct sk_buff
+ 	struct frag_queue *fq;
+ 	const struct ipv6hdr *hdr = ipv6_hdr(skb);
+ 	struct net *net = dev_net(skb_dst(skb)->dev);
+-	int iif;
++	__be16 frag_off;
++	int iif, offset;
++	u8 nexthdr;
+ 
+ 	if (IP6CB(skb)->flags & IP6SKB_FRAGMENTED)
+ 		goto fail_hdr;
+@@ -351,6 +355,33 @@ static int ipv6_frag_rcv(struct sk_buff
+ 		return 1;
+ 	}
+ 
++	/* RFC 8200, Section 4.5 Fragment Header:
++	 * If the first fragment does not include all headers through an
++	 * Upper-Layer header, then that fragment should be discarded and
++	 * an ICMP Parameter Problem, Code 3, message should be sent to
++	 * the source of the fragment, with the Pointer field set to zero.
++	 */
++	nexthdr = hdr->nexthdr;
++	offset = ipv6_skip_exthdr(skb, skb_transport_offset(skb), &nexthdr, &frag_off);
++	if (offset >= 0) {
++		/* Check some common protocols' header */
++		if (nexthdr == IPPROTO_TCP)
++			offset += sizeof(struct tcphdr);
++		else if (nexthdr == IPPROTO_UDP)
++			offset += sizeof(struct udphdr);
++		else if (nexthdr == IPPROTO_ICMPV6)
++			offset += sizeof(struct icmp6hdr);
++		else
++			offset += 1;
++
++		if (!(frag_off & htons(IP6_OFFSET)) && offset > skb->len) {
++			__IP6_INC_STATS(net, __in6_dev_get_safely(skb->dev),
++					IPSTATS_MIB_INHDRERRORS);
++			icmpv6_param_prob(skb, ICMPV6_HDR_INCOMP, 0);
++			return -1;
++		}
++	}
++
+ 	iif = skb->dev ? skb->dev->ifindex : 0;
+ 	fq = fq_find(net, fhdr->identification, hdr, iif);
+ 	if (fq) {
+From b98e762e3d71e893b221f871825dc64694cfb258 Mon Sep 17 00:00:00 2001
+From: Josef Bacik <josef@toxicpanda.com>
+Date: Mon, 25 Jan 2021 12:21:02 -0500
+Subject: nbd: freeze the queue while we're adding connections
+
+From: Josef Bacik <josef@toxicpanda.com>
+
+commit b98e762e3d71e893b221f871825dc64694cfb258 upstream.
+
+When setting up a device, we can krealloc the config->socks array to add
+new sockets to the configuration.  However if we happen to get a IO
+request in at this point even though we aren't setup we could hit a UAF,
+as we deref config->socks without any locking, assuming that the
+configuration was setup already and that ->socks is safe to access it as
+we have a reference on the configuration.
+
+But there's nothing really preventing IO from occurring at this point of
+the device setup, we don't want to incur the overhead of a lock to
+access ->socks when it will never change while the device is running.
+To fix this UAF scenario simply freeze the queue if we are adding
+sockets.  This will protect us from this particular case without adding
+any additional overhead for the normal running case.
+
+Cc: stable@vger.kernel.org
+Signed-off-by: Josef Bacik <josef@toxicpanda.com>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ drivers/block/nbd.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+--- a/drivers/block/nbd.c
++++ b/drivers/block/nbd.c
+@@ -1014,6 +1014,12 @@ static int nbd_add_socket(struct nbd_dev
+ 	if (!sock)
+ 		return err;
+ 
++	/*
++	 * We need to make sure we don't get any errant requests while we're
++	 * reallocating the ->socks array.
++	 */
++	blk_mq_freeze_queue(nbd->disk->queue);
++
+ 	if (!netlink && !nbd->task_setup &&
+ 	    !test_bit(NBD_RT_BOUND, &config->runtime_flags))
+ 		nbd->task_setup = current;
+@@ -1052,10 +1058,12 @@ static int nbd_add_socket(struct nbd_dev
+ 	nsock->cookie = 0;
+ 	socks[config->num_connections++] = nsock;
+ 	atomic_inc(&config->live_connections);
++	blk_mq_unfreeze_queue(nbd->disk->queue);
+ 
+ 	return 0;
+ 
+ put_socket:
++	blk_mq_unfreeze_queue(nbd->disk->queue);
+ 	sockfd_put(sock);
+ 	return err;
+ }
+From 36af2d5c4433fb40ee2af912c4ac0a30991aecfc Mon Sep 17 00:00:00 2001
+From: Kai-Heng Feng <kai.heng.feng@canonical.com>
+Date: Fri, 22 Jan 2021 20:53:02 +0800
+Subject: ACPI: sysfs: Prefer "compatible" modalias
+
+From: Kai-Heng Feng <kai.heng.feng@canonical.com>
+
+commit 36af2d5c4433fb40ee2af912c4ac0a30991aecfc upstream.
+
+Commit 8765c5ba1949 ("ACPI / scan: Rework modalias creation when
+"compatible" is present") may create two "MODALIAS=" in one uevent
+file if specific conditions are met.
+
+This breaks systemd-udevd, which assumes each "key" in one uevent file
+to be unique. The internal implementation of systemd-udevd overwrites
+the first MODALIAS with the second one, so its kmod rule doesn't load
+the driver for the first MODALIAS.
+
+So if both the ACPI modalias and the OF modalias are present, use the
+latter to ensure that there will be only one MODALIAS.
+
+Link: https://github.com/systemd/systemd/pull/18163
+Suggested-by: Mika Westerberg <mika.westerberg@linux.intel.com>
+Fixes: 8765c5ba1949 ("ACPI / scan: Rework modalias creation when "compatible" is present")
+Signed-off-by: Kai-Heng Feng <kai.heng.feng@canonical.com>
+Reviewed-by: Mika Westerberg <mika.westerberg@linux.intel.com>
+Reviewed-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: 4.1+ <stable@vger.kernel.org> # 4.1+
+[ rjw: Subject and changelog edits ]
+Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ drivers/acpi/device_sysfs.c |   20 ++++++--------------
+ 1 file changed, 6 insertions(+), 14 deletions(-)
+
+--- a/drivers/acpi/device_sysfs.c
++++ b/drivers/acpi/device_sysfs.c
+@@ -251,20 +251,12 @@ int __acpi_device_uevent_modalias(struct
+ 	if (add_uevent_var(env, "MODALIAS="))
+ 		return -ENOMEM;
+ 
+-	len = create_pnp_modalias(adev, &env->buf[env->buflen - 1],
+-				  sizeof(env->buf) - env->buflen);
+-	if (len < 0)
+-		return len;
+-
+-	env->buflen += len;
+-	if (!adev->data.of_compatible)
+-		return 0;
+-
+-	if (len > 0 && add_uevent_var(env, "MODALIAS="))
+-		return -ENOMEM;
+-
+-	len = create_of_modalias(adev, &env->buf[env->buflen - 1],
+-				 sizeof(env->buf) - env->buflen);
++	if (adev->data.of_compatible)
++		len = create_of_modalias(adev, &env->buf[env->buflen - 1],
++					 sizeof(env->buf) - env->buflen);
++	else
++		len = create_pnp_modalias(adev, &env->buf[env->buflen - 1],
++					  sizeof(env->buf) - env->buflen);
+ 	if (len < 0)
+ 		return len;
+ 
+From 56c91a18432b631ca18438841fd1831ef756cabf Mon Sep 17 00:00:00 2001
+From: Baoquan He <bhe@redhat.com>
+Date: Fri, 22 Jan 2021 15:42:14 +0800
+Subject: kernel: kexec: remove the lock operation of system_transition_mutex
+
+From: Baoquan He <bhe@redhat.com>
+
+commit 56c91a18432b631ca18438841fd1831ef756cabf upstream.
+
+Function kernel_kexec() is called with lock system_transition_mutex
+held in reboot system call. While inside kernel_kexec(), it will
+acquire system_transition_mutex agin. This will lead to dead lock.
+
+The dead lock should be easily triggered, it hasn't caused any
+failure report just because the feature 'kexec jump' is almost not
+used by anyone as far as I know. An inquiry can be made about who
+is using 'kexec jump' and where it's used. Before that, let's simply
+remove the lock operation inside CONFIG_KEXEC_JUMP ifdeffery scope.
+
+Fixes: 55f2503c3b69 ("PM / reboot: Eliminate race between reboot and suspend")
+Signed-off-by: Baoquan He <bhe@redhat.com>
+Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+Reviewed-by: Pingfan Liu <kernelfans@gmail.com>
+Cc: 4.19+ <stable@vger.kernel.org> # 4.19+
+Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ kernel/kexec_core.c |    2 --
+ 1 file changed, 2 deletions(-)
+
+--- a/kernel/kexec_core.c
++++ b/kernel/kexec_core.c
+@@ -1129,7 +1129,6 @@ int kernel_kexec(void)
+ 
+ #ifdef CONFIG_KEXEC_JUMP
+ 	if (kexec_image->preserve_context) {
+-		lock_system_sleep();
+ 		pm_prepare_console();
+ 		error = freeze_processes();
+ 		if (error) {
+@@ -1192,7 +1191,6 @@ int kernel_kexec(void)
+ 		thaw_processes();
+  Restore_console:
+ 		pm_restore_console();
+-		unlock_system_sleep();
+ 	}
+ #endif
+ 
+From 5de3b9430221b11a5e1fc2f5687af80777c8392a Mon Sep 17 00:00:00 2001
+From: Jian-Hong Pan <jhp@endlessos.org>
+Date: Fri, 22 Jan 2021 13:47:06 +0800
+Subject: ALSA: hda/realtek: Enable headset of ASUS B1400CEPE with ALC256
+
+From: Jian-Hong Pan <jhp@endlessos.org>
+
+commit 5de3b9430221b11a5e1fc2f5687af80777c8392a upstream.
+
+ASUS B1400CEPE laptop's headset audio is not enabled until
+ALC256_FIXUP_ASUS_HPE quirk is applied.
+
+Here is the original pin node values:
+
+0x12 0x40000000
+0x13 0x411111f0
+0x14 0x90170110
+0x18 0x411111f0
+0x19 0x411111f0
+0x1a 0x411111f0
+0x1b 0x411111f0
+0x1d 0x40461b45
+0x1e 0x411111f0
+0x21 0x04211020
+
+Signed-off-by: Jian-Hong Pan <jhp@endlessos.org>
+Cc: <stable@vger.kernel.org>
+Link: https://lore.kernel.org/r/20210122054705.48804-1-jhp@endlessos.org
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ sound/pci/hda/patch_realtek.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/sound/pci/hda/patch_realtek.c
++++ b/sound/pci/hda/patch_realtek.c
+@@ -7907,6 +7907,7 @@ static const struct snd_pci_quirk alc269
+ 	SND_PCI_QUIRK(0x1043, 0x18b1, "Asus MJ401TA", ALC256_FIXUP_ASUS_HEADSET_MIC),
+ 	SND_PCI_QUIRK(0x1043, 0x18f1, "Asus FX505DT", ALC256_FIXUP_ASUS_HEADSET_MIC),
+ 	SND_PCI_QUIRK(0x1043, 0x194e, "ASUS UX563FD", ALC294_FIXUP_ASUS_HPE),
++	SND_PCI_QUIRK(0x1043, 0x1982, "ASUS B1400CEPE", ALC256_FIXUP_ASUS_HPE),
+ 	SND_PCI_QUIRK(0x1043, 0x19ce, "ASUS B9450FA", ALC294_FIXUP_ASUS_HPE),
+ 	SND_PCI_QUIRK(0x1043, 0x19e1, "ASUS UX581LV", ALC295_FIXUP_ASUS_MIC_NO_PRESENCE),
+ 	SND_PCI_QUIRK(0x1043, 0x1a13, "Asus G73Jw", ALC269_FIXUP_ASUS_G73JW),
+From 4961167bf7482944ca09a6f71263b9e47f949851 Mon Sep 17 00:00:00 2001
+From: Takashi Iwai <tiwai@suse.de>
+Date: Tue, 26 Jan 2021 17:56:03 +0100
+Subject: ALSA: hda/via: Apply the workaround generically for Clevo machines
+
+From: Takashi Iwai <tiwai@suse.de>
+
+commit 4961167bf7482944ca09a6f71263b9e47f949851 upstream.
+
+We've got another report indicating a similar problem wrt the
+power-saving behavior with VIA codec on Clevo machines.  Let's apply
+the existing workaround generically to all Clevo devices with VIA
+codecs to cover all in once.
+
+BugLink: https://bugzilla.opensuse.org/show_bug.cgi?id=1181330
+Cc: <stable@vger.kernel.org>
+Link: https://lore.kernel.org/r/20210126165603.11683-1-tiwai@suse.de
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ sound/pci/hda/patch_via.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/sound/pci/hda/patch_via.c
++++ b/sound/pci/hda/patch_via.c
+@@ -1043,7 +1043,7 @@ static const struct hda_fixup via_fixups
+ static const struct snd_pci_quirk vt2002p_fixups[] = {
+ 	SND_PCI_QUIRK(0x1043, 0x1487, "Asus G75", VIA_FIXUP_ASUS_G75),
+ 	SND_PCI_QUIRK(0x1043, 0x8532, "Asus X202E", VIA_FIXUP_INTMIC_BOOST),
+-	SND_PCI_QUIRK(0x1558, 0x3501, "Clevo W35xSS_370SS", VIA_FIXUP_POWER_SAVE),
++	SND_PCI_QUIRK_VENDOR(0x1558, "Clevo", VIA_FIXUP_POWER_SAVE),
+ 	{}
+ };
+ 
+From 896111dc4bcf887b835b3ef54f48b450d4692a1d Mon Sep 17 00:00:00 2001
+From: Sean Young <sean@mess.org>
+Date: Sun, 20 Dec 2020 13:29:54 +0100
+Subject: media: rc: ensure that uevent can be read directly after rc device register
+
+From: Sean Young <sean@mess.org>
+
+commit 896111dc4bcf887b835b3ef54f48b450d4692a1d upstream.
+
+There is a race condition where if the /sys/class/rc0/uevent file is read
+before rc_dev->registered is set to true, -ENODEV will be returned.
+
+Link: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1901089
+
+Cc: stable@vger.kernel.org
+Fixes: a2e2d73fa281 ("media: rc: do not access device via sysfs after rc_unregister_device()")
+Signed-off-by: Sean Young <sean@mess.org>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ drivers/media/rc/rc-main.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/media/rc/rc-main.c
++++ b/drivers/media/rc/rc-main.c
+@@ -1892,6 +1892,8 @@ int rc_register_device(struct rc_dev *de
+ 			goto out_raw;
+ 	}
+ 
++	dev->registered = true;
++
+ 	rc = device_add(&dev->dev);
+ 	if (rc)
+ 		goto out_rx_free;
+@@ -1901,8 +1903,6 @@ int rc_register_device(struct rc_dev *de
+ 		 dev->device_name ?: "Unspecified device", path ?: "N/A");
+ 	kfree(path);
+ 
+-	dev->registered = true;
+-
+ 	/*
+ 	 * once the the input device is registered in rc_setup_rx_device,
+ 	 * userspace can open the input device and rc_open() will be called
+From 5a22747b76ca2384057d8e783265404439d31d7f Mon Sep 17 00:00:00 2001
+From: Koen Vandeputte <koen.vandeputte@citymesh.com>
+Date: Thu, 7 Jan 2021 10:19:06 +0100
+Subject: ARM: dts: imx6qdl-gw52xx: fix duplicate regulator naming
+
+From: Koen Vandeputte <koen.vandeputte@citymesh.com>
+
+commit 5a22747b76ca2384057d8e783265404439d31d7f upstream.
+
+2 regulator descriptions carry identical naming.
+
+This leads to following boot warning:
+[    0.173138] debugfs: Directory 'vdd1p8' with parent 'regulator' already present!
+
+Fix this by renaming the one used for audio.
+
+Fixes: 5051bff33102 ("ARM: dts: imx: ventana: add LTC3676 PMIC support")
+Signed-off-by: Tim Harvey <tharvey@gateworks.com>
+Signed-off-by: Koen Vandeputte <koen.vandeputte@ncentric.com>
+Cc: stable@vger.kernel.org # v4.11
+Signed-off-by: Shawn Guo <shawnguo@kernel.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ arch/arm/boot/dts/imx6qdl-gw52xx.dtsi |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/arch/arm/boot/dts/imx6qdl-gw52xx.dtsi
++++ b/arch/arm/boot/dts/imx6qdl-gw52xx.dtsi
+@@ -273,7 +273,7 @@
+ 
+ 			/* VDD_AUD_1P8: Audio codec */
+ 			reg_aud_1p8v: ldo3 {
+-				regulator-name = "vdd1p8";
++				regulator-name = "vdd1p8a";
+ 				regulator-min-microvolt = <1800000>;
+ 				regulator-max-microvolt = <1800000>;
+ 				regulator-boot-on;
+From 5122565188bae59d507d90a9a9fd2fd6107f4439 Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Thu, 21 Jan 2021 17:16:22 +0100
+Subject: wext: fix NULL-ptr-dereference with cfg80211's lack of commit()
+
+From: Johannes Berg <johannes.berg@intel.com>
+
+commit 5122565188bae59d507d90a9a9fd2fd6107f4439 upstream.
+
+Since cfg80211 doesn't implement commit, we never really cared about
+that code there (and it's configured out w/o CONFIG_WIRELESS_EXT).
+After all, since it has no commit, it shouldn't return -EIWCOMMIT to
+indicate commit is needed.
+
+However, EIWCOMMIT is actually an alias for EINPROGRESS, which _can_
+happen if e.g. we try to change the frequency but we're already in
+the process of connecting to some network, and drivers could return
+that value (or even cfg80211 itself might).
+
+This then causes us to crash because dev->wireless_handlers is NULL
+but we try to check dev->wireless_handlers->standard[0].
+
+Fix this by also checking dev->wireless_handlers. Also simplify the
+code a little bit.
+
+Cc: stable@vger.kernel.org
+Reported-by: syzbot+444248c79e117bc99f46@syzkaller.appspotmail.com
+Reported-by: syzbot+8b2a88a09653d4084179@syzkaller.appspotmail.com
+Link: https://lore.kernel.org/r/20210121171621.2076e4a37d5a.I5d9c72220fe7bb133fb718751da0180a57ecba4e@changeid
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ net/wireless/wext-core.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+--- a/net/wireless/wext-core.c
++++ b/net/wireless/wext-core.c
+@@ -896,8 +896,9 @@ out:
+ int call_commit_handler(struct net_device *dev)
+ {
+ #ifdef CONFIG_WIRELESS_EXT
+-	if ((netif_running(dev)) &&
+-	   (dev->wireless_handlers->standard[0] != NULL))
++	if (netif_running(dev) &&
++	    dev->wireless_handlers &&
++	    dev->wireless_handlers->standard[0])
+ 		/* Call the commit handler on the driver */
+ 		return dev->wireless_handlers->standard[0](dev, NULL,
+ 							   NULL, NULL);
+From 7e0e63d09516e96994c879f07c5a3c3269d7015e Mon Sep 17 00:00:00 2001
+From: Giacinto Cifelli <gciofono@gmail.com>
+Date: Wed, 20 Jan 2021 05:56:50 +0100
+Subject: net: usb: qmi_wwan: added support for Thales Cinterion PLSx3 modem family
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+From: Giacinto Cifelli <gciofono@gmail.com>
+
+commit 7e0e63d09516e96994c879f07c5a3c3269d7015e upstream.
+
+Bus 003 Device 009: ID 1e2d:006f
+Device Descriptor:
+  bLength                18
+  bDescriptorType         1
+  bcdUSB               2.00
+  bDeviceClass          239 Miscellaneous Device
+  bDeviceSubClass         2 ?
+  bDeviceProtocol         1 Interface Association
+  bMaxPacketSize0        64
+  idVendor           0x1e2d
+  idProduct          0x006f
+  bcdDevice            0.00
+  iManufacturer           3 Cinterion Wireless Modules
+  iProduct                2 PLSx3
+  iSerial                 4 fa3c1419
+  bNumConfigurations      1
+  Configuration Descriptor:
+    bLength                 9
+    bDescriptorType         2
+    wTotalLength          303
+    bNumInterfaces          9
+    bConfigurationValue     1
+    iConfiguration          1 Cinterion Configuration
+    bmAttributes         0xe0
+      Self Powered
+      Remote Wakeup
+    MaxPower              500mA
+    Interface Association:
+      bLength                 8
+      bDescriptorType        11
+      bFirstInterface         0
+      bInterfaceCount         2
+      bFunctionClass          2 Communications
+      bFunctionSubClass       2 Abstract (modem)
+      bFunctionProtocol       1 AT-commands (v.25ter)
+      iFunction               0
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        0
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         2 Communications
+      bInterfaceSubClass      2 Abstract (modem)
+      bInterfaceProtocol      1 AT-commands (v.25ter)
+      iInterface              0
+      CDC Header:
+        bcdCDC               1.10
+      CDC ACM:
+        bmCapabilities       0x02
+          line coding and serial state
+      CDC Call Management:
+        bmCapabilities       0x03
+          call management
+          use DataInterface
+        bDataInterface          1
+      CDC Union:
+        bMasterInterface        0
+        bSlaveInterface         1
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x81  EP 1 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               5
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        1
+      bAlternateSetting       0
+      bNumEndpoints           2
+      bInterfaceClass        10 CDC Data
+      bInterfaceSubClass      0 Unused
+      bInterfaceProtocol      0
+      iInterface              0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x82  EP 2 IN
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x01  EP 1 OUT
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+    Interface Association:
+      bLength                 8
+      bDescriptorType        11
+      bFirstInterface         2
+      bInterfaceCount         2
+      bFunctionClass          2 Communications
+      bFunctionSubClass       2 Abstract (modem)
+      bFunctionProtocol       1 AT-commands (v.25ter)
+      iFunction               0
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        2
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         2 Communications
+      bInterfaceSubClass      2 Abstract (modem)
+      bInterfaceProtocol      1 AT-commands (v.25ter)
+      iInterface              0
+      CDC Header:
+        bcdCDC               1.10
+      CDC ACM:
+        bmCapabilities       0x02
+          line coding and serial state
+      CDC Call Management:
+        bmCapabilities       0x03
+          call management
+          use DataInterface
+        bDataInterface          3
+      CDC Union:
+        bMasterInterface        2
+        bSlaveInterface         3
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x83  EP 3 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               5
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        3
+      bAlternateSetting       0
+      bNumEndpoints           2
+      bInterfaceClass        10 CDC Data
+      bInterfaceSubClass      0 Unused
+      bInterfaceProtocol      0
+      iInterface              0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x84  EP 4 IN
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x02  EP 2 OUT
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+    Interface Association:
+      bLength                 8
+      bDescriptorType        11
+      bFirstInterface         4
+      bInterfaceCount         2
+      bFunctionClass          2 Communications
+      bFunctionSubClass       2 Abstract (modem)
+      bFunctionProtocol       1 AT-commands (v.25ter)
+      iFunction               0
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        4
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         2 Communications
+      bInterfaceSubClass      2 Abstract (modem)
+      bInterfaceProtocol      1 AT-commands (v.25ter)
+      iInterface              0
+      CDC Header:
+        bcdCDC               1.10
+      CDC ACM:
+        bmCapabilities       0x02
+          line coding and serial state
+      CDC Call Management:
+        bmCapabilities       0x03
+          call management
+          use DataInterface
+        bDataInterface          5
+      CDC Union:
+        bMasterInterface        4
+        bSlaveInterface         5
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x85  EP 5 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               5
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        5
+      bAlternateSetting       0
+      bNumEndpoints           2
+      bInterfaceClass        10 CDC Data
+      bInterfaceSubClass      0 Unused
+      bInterfaceProtocol      0
+      iInterface              0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x86  EP 6 IN
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x03  EP 3 OUT
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+    Interface Association:
+      bLength                 8
+      bDescriptorType        11
+      bFirstInterface         6
+      bInterfaceCount         2
+      bFunctionClass          2 Communications
+      bFunctionSubClass       2 Abstract (modem)
+      bFunctionProtocol       1 AT-commands (v.25ter)
+      iFunction               0
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        6
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         2 Communications
+      bInterfaceSubClass      2 Abstract (modem)
+      bInterfaceProtocol      1 AT-commands (v.25ter)
+      iInterface              0
+      CDC Header:
+        bcdCDC               1.10
+      CDC ACM:
+        bmCapabilities       0x02
+          line coding and serial state
+      CDC Call Management:
+        bmCapabilities       0x03
+          call management
+          use DataInterface
+        bDataInterface          7
+      CDC Union:
+        bMasterInterface        6
+        bSlaveInterface         7
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x87  EP 7 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               5
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        7
+      bAlternateSetting       0
+      bNumEndpoints           2
+      bInterfaceClass        10 CDC Data
+      bInterfaceSubClass      0 Unused
+      bInterfaceProtocol      0
+      iInterface              0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x88  EP 8 IN
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x04  EP 4 OUT
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        8
+      bAlternateSetting       0
+      bNumEndpoints           3
+      bInterfaceClass       255 Vendor Specific Class
+      bInterfaceSubClass    255 Vendor Specific Subclass
+      bInterfaceProtocol    255 Vendor Specific Protocol
+      iInterface              0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x89  EP 9 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               5
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x8a  EP 10 IN
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x05  EP 5 OUT
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+Device Qualifier (for other device speed):
+  bLength                10
+  bDescriptorType         6
+  bcdUSB               2.00
+  bDeviceClass          239 Miscellaneous Device
+  bDeviceSubClass         2 ?
+  bDeviceProtocol         1 Interface Association
+  bMaxPacketSize0        64
+  bNumConfigurations      1
+Device Status:     0x0000
+  (Bus Powered)
+
+Cc: stable@vger.kernel.org
+Signed-off-by: Giacinto Cifelli <gciofono@gmail.com>
+Acked-by: Bjørn Mork <bjorn@mork.no>
+Link: https://lore.kernel.org/r/20210120045650.10855-1-gciofono@gmail.com
+Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ drivers/net/usb/qmi_wwan.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/net/usb/qmi_wwan.c
++++ b/drivers/net/usb/qmi_wwan.c
+@@ -1347,6 +1347,7 @@ static const struct usb_device_id produc
+ 	{QMI_FIXED_INTF(0x0b3c, 0xc00a, 6)},	/* Olivetti Olicard 160 */
+ 	{QMI_FIXED_INTF(0x0b3c, 0xc00b, 4)},	/* Olivetti Olicard 500 */
+ 	{QMI_FIXED_INTF(0x1e2d, 0x0060, 4)},	/* Cinterion PLxx */
++	{QMI_QUIRK_SET_DTR(0x1e2d, 0x006f, 8)}, /* Cinterion PLS83/PLS63 */
+ 	{QMI_FIXED_INTF(0x1e2d, 0x0053, 4)},	/* Cinterion PHxx,PXxx */
+ 	{QMI_FIXED_INTF(0x1e2d, 0x0063, 10)},	/* Cinterion ALASxx (1 RmNet) */
+ 	{QMI_FIXED_INTF(0x1e2d, 0x0082, 4)},	/* Cinterion PHxx,PXxx (2 RmNet) */
+From 6c12a6384e0c0b96debd88b24028e58f2ebd417b Mon Sep 17 00:00:00 2001
+From: Tony Krowiak <akrowiak@linux.ibm.com>
+Date: Tue, 22 Dec 2020 20:15:53 -0500
+Subject: s390/vfio-ap: No need to disable IRQ after queue reset
+
+From: Tony Krowiak <akrowiak@linux.ibm.com>
+
+commit 6c12a6384e0c0b96debd88b24028e58f2ebd417b upstream.
+
+The queues assigned to a matrix mediated device are currently reset when:
+
+* The VFIO_DEVICE_RESET ioctl is invoked
+* The mdev fd is closed by userspace (QEMU)
+* The mdev is removed from sysfs.
+
+Immediately after the reset of a queue, a call is made to disable
+interrupts for the queue. This is entirely unnecessary because the reset of
+a queue disables interrupts, so this will be removed.
+
+Furthermore, vfio_ap_irq_disable() does an unconditional PQAP/AQIC which
+can result in a specification exception (when the corresponding facility
+is not available), so this is actually a bugfix.
+
+Signed-off-by: Tony Krowiak <akrowiak@linux.ibm.com>
+[pasic@linux.ibm.com: minor rework before merging]
+Signed-off-by: Halil Pasic <pasic@linux.ibm.com>
+Fixes: ec89b55e3bce ("s390: ap: implement PAPQ AQIC interception in kernel")
+Cc: <stable@vger.kernel.org>
+Signed-off-by: Vasily Gorbik <gor@linux.ibm.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ drivers/s390/crypto/vfio_ap_drv.c     |    6 --
+ drivers/s390/crypto/vfio_ap_ops.c     |  100 +++++++++++++++++++++-------------
+ drivers/s390/crypto/vfio_ap_private.h |   12 ++--
+ 3 files changed, 69 insertions(+), 49 deletions(-)
+
+--- a/drivers/s390/crypto/vfio_ap_drv.c
++++ b/drivers/s390/crypto/vfio_ap_drv.c
+@@ -71,15 +71,11 @@ static int vfio_ap_queue_dev_probe(struc
+ static void vfio_ap_queue_dev_remove(struct ap_device *apdev)
+ {
+ 	struct vfio_ap_queue *q;
+-	int apid, apqi;
+ 
+ 	mutex_lock(&matrix_dev->lock);
+ 	q = dev_get_drvdata(&apdev->device);
++	vfio_ap_mdev_reset_queue(q, 1);
+ 	dev_set_drvdata(&apdev->device, NULL);
+-	apid = AP_QID_CARD(q->apqn);
+-	apqi = AP_QID_QUEUE(q->apqn);
+-	vfio_ap_mdev_reset_queue(apid, apqi, 1);
+-	vfio_ap_irq_disable(q);
+ 	kfree(q);
+ 	mutex_unlock(&matrix_dev->lock);
+ }
+--- a/drivers/s390/crypto/vfio_ap_ops.c
++++ b/drivers/s390/crypto/vfio_ap_ops.c
+@@ -25,6 +25,7 @@
+ #define VFIO_AP_MDEV_NAME_HWVIRT "VFIO AP Passthrough Device"
+ 
+ static int vfio_ap_mdev_reset_queues(struct mdev_device *mdev);
++static struct vfio_ap_queue *vfio_ap_find_queue(int apqn);
+ 
+ static int match_apqn(struct device *dev, const void *data)
+ {
+@@ -49,20 +50,15 @@ static struct vfio_ap_queue *vfio_ap_get
+ 					int apqn)
+ {
+ 	struct vfio_ap_queue *q;
+-	struct device *dev;
+ 
+ 	if (!test_bit_inv(AP_QID_CARD(apqn), matrix_mdev->matrix.apm))
+ 		return NULL;
+ 	if (!test_bit_inv(AP_QID_QUEUE(apqn), matrix_mdev->matrix.aqm))
+ 		return NULL;
+ 
+-	dev = driver_find_device(&matrix_dev->vfio_ap_drv->driver, NULL,
+-				 &apqn, match_apqn);
+-	if (!dev)
+-		return NULL;
+-	q = dev_get_drvdata(dev);
+-	q->matrix_mdev = matrix_mdev;
+-	put_device(dev);
++	q = vfio_ap_find_queue(apqn);
++	if (q)
++		q->matrix_mdev = matrix_mdev;
+ 
+ 	return q;
+ }
+@@ -119,13 +115,18 @@ static void vfio_ap_wait_for_irqclear(in
+  */
+ static void vfio_ap_free_aqic_resources(struct vfio_ap_queue *q)
+ {
+-	if (q->saved_isc != VFIO_AP_ISC_INVALID && q->matrix_mdev)
++	if (!q)
++		return;
++	if (q->saved_isc != VFIO_AP_ISC_INVALID &&
++	    !WARN_ON(!(q->matrix_mdev && q->matrix_mdev->kvm))) {
+ 		kvm_s390_gisc_unregister(q->matrix_mdev->kvm, q->saved_isc);
+-	if (q->saved_pfn && q->matrix_mdev)
++		q->saved_isc = VFIO_AP_ISC_INVALID;
++	}
++	if (q->saved_pfn && !WARN_ON(!q->matrix_mdev)) {
+ 		vfio_unpin_pages(mdev_dev(q->matrix_mdev->mdev),
+ 				 &q->saved_pfn, 1);
+-	q->saved_pfn = 0;
+-	q->saved_isc = VFIO_AP_ISC_INVALID;
++		q->saved_pfn = 0;
++	}
+ }
+ 
+ /**
+@@ -144,7 +145,7 @@ static void vfio_ap_free_aqic_resources(
+  * Returns if ap_aqic function failed with invalid, deconfigured or
+  * checkstopped AP.
+  */
+-struct ap_queue_status vfio_ap_irq_disable(struct vfio_ap_queue *q)
++static struct ap_queue_status vfio_ap_irq_disable(struct vfio_ap_queue *q)
+ {
+ 	struct ap_qirq_ctrl aqic_gisa = {};
+ 	struct ap_queue_status status;
+@@ -1114,48 +1115,70 @@ static int vfio_ap_mdev_group_notifier(s
+ 	return NOTIFY_OK;
+ }
+ 
+-static void vfio_ap_irq_disable_apqn(int apqn)
++static struct vfio_ap_queue *vfio_ap_find_queue(int apqn)
+ {
+ 	struct device *dev;
+-	struct vfio_ap_queue *q;
++	struct vfio_ap_queue *q = NULL;
+ 
+ 	dev = driver_find_device(&matrix_dev->vfio_ap_drv->driver, NULL,
+ 				 &apqn, match_apqn);
+ 	if (dev) {
+ 		q = dev_get_drvdata(dev);
+-		vfio_ap_irq_disable(q);
+ 		put_device(dev);
+ 	}
++
++	return q;
+ }
+ 
+-int vfio_ap_mdev_reset_queue(unsigned int apid, unsigned int apqi,
++int vfio_ap_mdev_reset_queue(struct vfio_ap_queue *q,
+ 			     unsigned int retry)
+ {
+ 	struct ap_queue_status status;
++	int ret;
+ 	int retry2 = 2;
+-	int apqn = AP_MKQID(apid, apqi);
+ 
+-	do {
+-		status = ap_zapq(apqn);
+-		switch (status.response_code) {
+-		case AP_RESPONSE_NORMAL:
+-			while (!status.queue_empty && retry2--) {
+-				msleep(20);
+-				status = ap_tapq(apqn, NULL);
+-			}
+-			WARN_ON_ONCE(retry2 <= 0);
+-			return 0;
+-		case AP_RESPONSE_RESET_IN_PROGRESS:
+-		case AP_RESPONSE_BUSY:
++	if (!q)
++		return 0;
++
++retry_zapq:
++	status = ap_zapq(q->apqn);
++	switch (status.response_code) {
++	case AP_RESPONSE_NORMAL:
++		ret = 0;
++		break;
++	case AP_RESPONSE_RESET_IN_PROGRESS:
++		if (retry--) {
+ 			msleep(20);
+-			break;
+-		default:
+-			/* things are really broken, give up */
+-			return -EIO;
++			goto retry_zapq;
+ 		}
+-	} while (retry--);
++		ret = -EBUSY;
++		break;
++	case AP_RESPONSE_Q_NOT_AVAIL:
++	case AP_RESPONSE_DECONFIGURED:
++	case AP_RESPONSE_CHECKSTOPPED:
++		WARN_ON_ONCE(status.irq_enabled);
++		ret = -EBUSY;
++		goto free_resources;
++	default:
++		/* things are really broken, give up */
++		WARN(true, "PQAP/ZAPQ completed with invalid rc (%x)\n",
++		     status.response_code);
++		return -EIO;
++	}
++
++	/* wait for the reset to take effect */
++	while (retry2--) {
++		if (status.queue_empty && !status.irq_enabled)
++			break;
++		msleep(20);
++		status = ap_tapq(q->apqn, NULL);
++	}
++	WARN_ON_ONCE(retry2 <= 0);
+ 
+-	return -EBUSY;
++free_resources:
++	vfio_ap_free_aqic_resources(q);
++
++	return ret;
+ }
+ 
+ static int vfio_ap_mdev_reset_queues(struct mdev_device *mdev)
+@@ -1163,13 +1186,15 @@ static int vfio_ap_mdev_reset_queues(str
+ 	int ret;
+ 	int rc = 0;
+ 	unsigned long apid, apqi;
++	struct vfio_ap_queue *q;
+ 	struct ap_matrix_mdev *matrix_mdev = mdev_get_drvdata(mdev);
+ 
+ 	for_each_set_bit_inv(apid, matrix_mdev->matrix.apm,
+ 			     matrix_mdev->matrix.apm_max + 1) {
+ 		for_each_set_bit_inv(apqi, matrix_mdev->matrix.aqm,
+ 				     matrix_mdev->matrix.aqm_max + 1) {
+-			ret = vfio_ap_mdev_reset_queue(apid, apqi, 1);
++			q = vfio_ap_find_queue(AP_MKQID(apid, apqi));
++			ret = vfio_ap_mdev_reset_queue(q, 1);
+ 			/*
+ 			 * Regardless whether a queue turns out to be busy, or
+ 			 * is not operational, we need to continue resetting
+@@ -1177,7 +1202,6 @@ static int vfio_ap_mdev_reset_queues(str
+ 			 */
+ 			if (ret)
+ 				rc = ret;
+-			vfio_ap_irq_disable_apqn(AP_MKQID(apid, apqi));
+ 		}
+ 	}
+ 
+--- a/drivers/s390/crypto/vfio_ap_private.h
++++ b/drivers/s390/crypto/vfio_ap_private.h
+@@ -88,11 +88,6 @@ struct ap_matrix_mdev {
+ 	struct mdev_device *mdev;
+ };
+ 
+-extern int vfio_ap_mdev_register(void);
+-extern void vfio_ap_mdev_unregister(void);
+-int vfio_ap_mdev_reset_queue(unsigned int apid, unsigned int apqi,
+-			     unsigned int retry);
+-
+ struct vfio_ap_queue {
+ 	struct ap_matrix_mdev *matrix_mdev;
+ 	unsigned long saved_pfn;
+@@ -100,5 +95,10 @@ struct vfio_ap_queue {
+ #define VFIO_AP_ISC_INVALID 0xff
+ 	unsigned char saved_isc;
+ };
+-struct ap_queue_status vfio_ap_irq_disable(struct vfio_ap_queue *q);
++
++int vfio_ap_mdev_register(void);
++void vfio_ap_mdev_unregister(void);
++int vfio_ap_mdev_reset_queue(struct vfio_ap_queue *q,
++			     unsigned int retry);
++
+ #endif /* _VFIO_AP_PRIVATE_H_ */
+From fef9c8d28e28a808274a18fbd8cc2685817fd62a Mon Sep 17 00:00:00 2001
+From: Laurent Badel <laurentbadel@eaton.com>
+Date: Fri, 22 Jan 2021 17:19:41 +0100
+Subject: PM: hibernate: flush swap writer after marking
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+From: Laurent Badel <laurentbadel@eaton.com>
+
+commit fef9c8d28e28a808274a18fbd8cc2685817fd62a upstream.
+
+﻿Flush the swap writer after, not before, marking the files, to ensure the
+signature is properly written.
+
+Fixes: 6f612af57821 ("PM / Hibernate: Group swap ops")
+Signed-off-by: Laurent Badel <laurentbadel@eaton.com>
+Cc: All applicable <stable@vger.kernel.org>
+Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ kernel/power/swap.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/kernel/power/swap.c
++++ b/kernel/power/swap.c
+@@ -489,10 +489,10 @@ static int swap_writer_finish(struct swa
+ 		unsigned int flags, int error)
+ {
+ 	if (!error) {
+-		flush_swap_writer(handle);
+ 		pr_info("S");
+ 		error = mark_swapfiles(handle, flags);
+ 		pr_cont("|\n");
++		flush_swap_writer(handle);
+ 	}
+ 
+ 	if (error)

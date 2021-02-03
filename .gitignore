@@ -1,7 +1,5 @@
 pkg
 src
-temp
-builds
 *.tar.zst
 *.xz
 *.tar.xz
