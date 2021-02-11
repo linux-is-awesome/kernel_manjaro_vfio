@@ -14,7 +14,7 @@ pkgname=('linux54-vfio' 'linux54-vfio-headers')
 _kernelname=-MANJARO-VFIO
 _basekernel=5.4
 _basever=54
-pkgver=5.4.94
+pkgver=5.4.96
 pkgrel=1
 arch=('x86_64')
 url="http://www.kernel.org/"
@@ -84,9 +84,9 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0002-clear-patches.patch'
         'enable_additional_cpu_optimizations_for_gcc.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            '40db6e83da28b8e4d048a5f71a7fe937d91cf4d8171dfd7466d4b663d034b6c5'
-            '62b1ee50c1fb1ead8c95c887846104eb315b322dd5307de9d7ad6e034d09b3b4'
-            '07735dc1dfa661f534b85554072f6f1f539a93b5588606f22f5c0818390af725'
+            '0e5520ed5da1f6b261c8aec46009a75d81e2cf7c4a58f9982bab0f9b6fbe5f55'
+            'af3bffcff4c12391b053ed97a08f0c2d67b24d84942be4d43a8f34e65b34ee3f'
+            'aa51856eabb1150301761e29a4f6bfcc8a0a8d2566c1d261366b0d50f6da5805'
             '101ac92871078a1e72320cd0d7432e0a44e28c50864b2cd46ae57a026e021387'
             '9087b14760b203fe6939baccbb7d59ccf256e71f20b5355326702bc890de4ed8'
             '7685d526bbdbfa795986591a70071c960ff572f56d3501774861728a9df8664c'

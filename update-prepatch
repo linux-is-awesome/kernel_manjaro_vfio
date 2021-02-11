@@ -1,18 +1,19 @@
 #!/bin/bash
+
 source PKGBUILD
 
-if [ -d stable-queue ] ;
+if [ -d prepatch ] ;
 then
-  cd stable-queue
+  cd prepatch
   git pull
   cd ..
 else
-  git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/stable-queue.git
+  git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/stable-queue.git ./prepatch
 fi
 
-if [ -d stable-queue/queue-$_basekernel ] ;
+if [ -d prepatch/queue-$_basekernel ] ;
 then
-  cd stable-queue/queue-$_basekernel
+  cd prepatch/queue-$_basekernel
   echo "" > ../../prepatch-$_basekernel.patch
   for i in $(cat ./series); 
   do 

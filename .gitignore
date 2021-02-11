@@ -1,5 +1,6 @@
 pkg
 src
+prepatch
 *.tar.zst
 *.xz
 *.tar.xz
