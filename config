@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/x86 5.4.95-1 Kernel Configuration
+# Linux/x86 5.4.xx Kernel Configuration
 #
 
 #
@@ -10603,3 +10603,8 @@ CONFIG_UNWINDER_ORC=y
 # CONFIG_UNWINDER_FRAME_POINTER is not set
 # CONFIG_UNWINDER_GUESS is not set
 # end of Kernel hacking
+
+# Config for patches
+#
+CONFIG_MNATIVE=y
+CONFIG_X86_P6_NOP=y
