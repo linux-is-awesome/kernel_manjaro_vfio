@@ -9,8 +9,8 @@
 # Cloud Server
 _server=cpx51
 
-pkgbase=linux54-vfio
-pkgname=('linux54-vfio' 'linux54-vfio-headers')
+pkgbase=linux54-xanmod-vfio
+pkgname=('linux54-xanmod-vfio' 'linux54-xanmod-vfio-headers')
 _kernelname=-MANJARO-VFIO
 _basekernel=5.4
 _basever=54
@@ -25,10 +25,11 @@ makedepends=('bc'
     'git'
     'inetutils'
     'kmod'
-    'xmlto')
+    'xmlto'
+    'cpio')
 options=('!strip')
 source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.xz"
-        "https://www.kernel.org/pub/linux/kernel/v5.x/patch-${pkgver}.xz"
+        "https://github.com/xanmod/linux/releases/download/${pkgver}-xanmod${pkgrel}/patch-${pkgver}-xanmod${pkgrel}.xz"
         # the main kernel config file
         'config'
         # Canonical
@@ -41,7 +42,6 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         # MANJARO Patches
         '0101-i2c-nuvoton-nc677x-hwmon-driver.patch'
         '0102-iomap-iomap_bmap-should-accept-unwritten-maps.patch'
-        '0103-futex.patch'
         '0201-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch'
         '0202-apparmor-af_unix-mediation.patch'
         '0203-apparmor-fix-use-after-free-in-sk_peer_label.patch'
@@ -76,23 +76,18 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         '0512-bootsplash.patch'
         '0513-bootsplash.gitpatch'
         # vfio patches
-        'add-acs-overrides.patch'
         '0002-virt-vbox-Add-support-for-the-new-VBG_IOCTL_ACQUIRE_.patch'
         'i915-vga-arbiter.patch'
-        'sphinx-workaround.patch'
-        # performance
-        '0002-clear-patches.patch'
-        'enable_additional_cpu_optimizations_for_gcc.patch')
+        'sphinx-workaround.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            '680fbef162b09fbfdfd1ae8c6751722fb8b131cd1879eaf87ed0c41ff873d043'
-            '8c63d4ceab7942b42dcbe5b67bb966ca91acf27aeaf5f237fb0b7af52dd0cc95'
-            '3458290bfcd0467bb22b1175ff99a4c0a7860a3c3a7edc0e0135e7fba1d8ef3e'
+            'b4cdb9e27b772e6da8564fc3ab8e834f8c6268fb62e59594121b5955b52abac5'
+            'ed72b0e35a6d5bc8f88d06cf84da9dc173f72f4e05e412592ea64f21f0e2a3ab'
+            'b07e8e44bed0d9faef563d34b6767df72de3f8596059e6a23829296ece317023'
             '101ac92871078a1e72320cd0d7432e0a44e28c50864b2cd46ae57a026e021387'
             '9087b14760b203fe6939baccbb7d59ccf256e71f20b5355326702bc890de4ed8'
             '7685d526bbdbfa795986591a70071c960ff572f56d3501774861728a9df8664c'
             '7823d7488f42bc4ed7dfae6d1014dbde679d8b862c9a3697a39ba0dae5918978'
             '95745075edd597caa92b369cfbcd11a04c9e3c88c0c987c70114924e1e01df5c'
-            '78dde51123a21ec5efe9c420b309d03263001dafd8684f71c167f02e3f504f9e'
             '98202b8ad70d02d86603294bae967874fa7b18704b5c7b867568b0fd33a08921'
             '5cbbf3db9ea3205e9b89fe3049bea6dd626181db0cb0dc461e4cf5a400c68dd6'
             'c7dbec875d0c1d6782c037a1dcefff2e5bdb5fc9dffac1beea07dd8c1bdef1d7'
@@ -122,18 +117,15 @@ sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             '27471eee564ca3149dd271b0817719b5565a9594dc4d884fe3dc51a5f03832bc'
             '60e295601e4fb33d9bf65f198c54c7eb07c0d1e91e2ad1e0dd6cd6e142cb266d'
             '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef'
-            '6ebc19f8cdd608a97f8fa6a0a815ac142b88e18dd476bc2851b2771e3aa9522d'
             '4fd74bb2a7101d700fba91806141339d8c9e46a14f8fc1fe276cfb68f1eec0f5'
             '50880279bab5793c89a6823d751d3c84ead5efd5c4c0d38b921a14061fc0d336'
-            'b7c814c8183e4645947a6dcc3cbf80431de8a8fd4e895b780f9a5fd92f82cb8e'
-            'd02bf5ca08fd610394b9d3a0c3b176d74af206f897dee826e5cbaec97bb4a4aa'
-            '27b7fc535ade94b636c3ec4e809e141831e9465a0ef55215a9852b87048629e2')
+            'b7c814c8183e4645947a6dcc3cbf80431de8a8fd4e895b780f9a5fd92f82cb8e')
 prepare() {
   cd "${srcdir}/linux-${_basekernel}"
 
   # add upstream patch
   msg "add upstream patch"
-  patch -p1 -i "${srcdir}/patch-${pkgver}"
+  patch -p1 -i "${srcdir}/patch-${pkgver}-xanmod${pkgrel}"
 
   local src
   for src in "${source[@]}"; do
@@ -148,7 +140,7 @@ prepare() {
   git apply -p1 < "${srcdir}/0513-bootsplash.gitpatch"
 
   msg2 "copy config"
-  cat "${srcdir}/config" > ./.config
+  cat "${srcdir}/config" > ./.config     
 
   if [ "${_kernelname}" != "" ]; then
     sed -i "s|CONFIG_LOCALVERSION=.*|CONFIG_LOCALVERSION=\"${_kernelname}\"|g" ./.config
@@ -184,7 +176,7 @@ build() {
   make ${MAKEFLAGS} LOCALVERSION= bzImage modules
 }
 
-package_linux54-vfio() {
+package_linux54-xanmod-vfio() {
   pkgdesc="The ${pkgbase/linux/Linux} kernel and modules"
   depends=('coreutils' 'linux-firmware' 'kmod' 'mkinitcpio>=27')
   optdepends=('crda: to set the correct wireless channels of your country')
@@ -209,10 +201,10 @@ package_linux54-vfio() {
   echo "${pkgbase}" | install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_kernver}/kernelbase"
 
   # add kernel version
-  echo "${pkgver}-${pkgrel}-MANJARO-VFIO x64" > "${pkgdir}/boot/${pkgbase}-${CARCH}.kver"
+  echo "${pkgver}-${pkgrel}-xanmod${_kernelname} x64" > "${pkgdir}/boot/${pkgbase}-${CARCH}.kver"
 
   # make room for external modules
-  local _extramodules="extramodules-${_basekernel}${_kernelname:--MANJARO}"
+  local _extramodules="extramodules-${_basekernel}-xanmod${_kernelname:--MANJARO}"
   ln -s "../${_extramodules}" "${pkgdir}/usr/lib/modules/${_kernver}/extramodules"
 
   # add real version for building modules and running depmod from hook
@@ -229,7 +221,7 @@ package_linux54-vfio() {
   install -Dt "${pkgdir}/usr/lib/modules/${_kernver}/build" -m644 vmlinux
 }
 
-package_linux54-vfio-headers() {
+package_linux54-xanmod-vfio-headers() {
   pkgdesc="Header files and scripts for building modules for ${pkgbase/linux/Linux} kernel"
   provides=("linux-headers=$pkgver")
 
