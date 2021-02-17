@@ -81,7 +81,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         'sphinx-workaround.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
             'b4cdb9e27b772e6da8564fc3ab8e834f8c6268fb62e59594121b5955b52abac5'
-            'ed72b0e35a6d5bc8f88d06cf84da9dc173f72f4e05e412592ea64f21f0e2a3ab'
+            'f4e717646907218f6b6b16d16b75ce6a66695b0b6225f323b4d5c8bad7c5be96'
             'b07e8e44bed0d9faef563d34b6767df72de3f8596059e6a23829296ece317023'
             '101ac92871078a1e72320cd0d7432e0a44e28c50864b2cd46ae57a026e021387'
             '9087b14760b203fe6939baccbb7d59ccf256e71f20b5355326702bc890de4ed8'
