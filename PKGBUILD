@@ -10,7 +10,7 @@
 _server=cpx51
 
 pkgbase=linux54-xanmod-vfio
-pkgname=('linux54-xanmod-vfio' 'linux54-xanmod-vfio-headers')
+pkgname=('linux54-xanmod-manjaro-vfio' 'linux54-xanmod-manjaro-vfio-headers')
 _kernelname=-MANJARO-VFIO
 _basekernel=5.4
 _basever=54
@@ -176,7 +176,7 @@ build() {
   make ${MAKEFLAGS} LOCALVERSION= bzImage modules
 }
 
-package_linux54-xanmod-vfio() {
+package_linux54-xanmod-manjaro-vfio() {
   pkgdesc="The ${pkgbase/linux/Linux} kernel and modules"
   depends=('coreutils' 'linux-firmware' 'kmod' 'mkinitcpio>=27')
   optdepends=('crda: to set the correct wireless channels of your country')
@@ -221,7 +221,7 @@ package_linux54-xanmod-vfio() {
   install -Dt "${pkgdir}/usr/lib/modules/${_kernver}/build" -m644 vmlinux
 }
 
-package_linux54-xanmod-vfio-headers() {
+package_linux54-xanmod-manjaro-vfio-headers() {
   pkgdesc="Header files and scripts for building modules for ${pkgbase/linux/Linux} kernel"
   provides=("linux-headers=$pkgver")
 
