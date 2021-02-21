@@ -9,12 +9,12 @@
 # Cloud Server
 _server=cpx51
 
-pkgbase=linux54-xanmod-vfio
+pkgbase=linux54-xanmod-manjaro-vfio
 pkgname=('linux54-xanmod-manjaro-vfio' 'linux54-xanmod-manjaro-vfio-headers')
 _kernelname=-MANJARO-VFIO
 _basekernel=5.4
 _basever=54
-pkgver=5.4.98
+pkgver=5.4.99
 pkgrel=1
 arch=('x86_64')
 url="http://www.kernel.org/"
@@ -80,9 +80,9 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         'i915-vga-arbiter.patch'
         'sphinx-workaround.patch')
 sha256sums=('bf338980b1670bca287f9994b7441c2361907635879169c64ae78364efc5f491'
-            'b4cdb9e27b772e6da8564fc3ab8e834f8c6268fb62e59594121b5955b52abac5'
-            'f4e717646907218f6b6b16d16b75ce6a66695b0b6225f323b4d5c8bad7c5be96'
-            'b07e8e44bed0d9faef563d34b6767df72de3f8596059e6a23829296ece317023'
+            'a49e9de96abc2ba127a977abfbced123c57ac7d53f603fa6c1896f5e7f36134d'
+            '05bc3db4f13323cf25a1e7e753f0a3182a7dec6a133f3743e75cd6543664d393'
+            '72e0b15fa4e5e87146583bd6b5881314f2287028367c4b8e22a651a30b0ad109'
             '101ac92871078a1e72320cd0d7432e0a44e28c50864b2cd46ae57a026e021387'
             '9087b14760b203fe6939baccbb7d59ccf256e71f20b5355326702bc890de4ed8'
             '7685d526bbdbfa795986591a70071c960ff572f56d3501774861728a9df8664c'
